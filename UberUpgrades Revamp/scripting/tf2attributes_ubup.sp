@@ -9,9 +9,6 @@
 #include <keyvalues>
 #include <sdkhooks>
 
-#pragma semicolon 1
-
-
 #define UU_VERSION "0.9.4"
 
 #define RED 0
@@ -44,9 +41,9 @@ new BuyNWmenu_enabled;
 new Handle:cvar_uu_version;
 
 new Handle:cvar_TimerMoneyGive_BlueTeam;
-new TimerMoneyGive_BlueTeam;
+new Float:TimerMoneyGive_BlueTeam;
 new Handle:cvar_TimerMoneyGive_RedTeam;
-new TimerMoneyGive_RedTeam;
+new Float:TimerMoneyGive_RedTeam;
 new Handle:cvar_MoneyBonusKill;
 new MoneyBonusKill;
 //new Handle:cvar_MoneyForTeamRatioRed
@@ -131,12 +128,15 @@ new gamemode;
 #define MVM_GAMEMODE 0
 #define CP_GAMEMODE 1
 
-
 new newweaponidx[128];
 new String:newweaponcn[64][64];
 new String:newweaponmenudesc[64][64];
 
-new RealStartMoney = 0;
+new Float:CurrencyOwned[MAXPLAYERS + 1]
+new Float:RealStartMoney = 0.0;
+
+new Float:CurrencySaved[MAXPLAYERS + 1];
+new Float:StartMoneySaved;
 
 public Action:Timer_WaitForTF2II(Handle:timer)
 {
@@ -419,6 +419,7 @@ public Event_PlayerChangeClass(Handle:event, const String:name[], bool:dontBroad
 		ResetClientUpgrades(client);
 		TF2Attrib_RemoveAll(client);
 		RespawnEffect(client);
+		CurrencyOwned[client] = RealStartMoney;
 		//PrintToChat(client, "client changeclass");
 		if (!client_respawn_handled[client])
 		{
@@ -469,8 +470,8 @@ public Action:Timer_GetConVars(Handle:timer)//Reload con_vars into vars
 	MoneyBonusKill = GetConVarInt(cvar_MoneyBonusKill);
 	//MoneyForTeamRatio[RED]  = GetConVarFloat(cvar_MoneyForTeamRatioRed)
 	//MoneyForTeamRatio[BLUE]  = GetConVarFloat(cvar_MoneyForTeamRatioBlue)
-	TimerMoneyGive_BlueTeam = GetConVarInt(cvar_TimerMoneyGive_BlueTeam);
-	TimerMoneyGive_RedTeam = GetConVarInt(cvar_TimerMoneyGive_RedTeam);
+	TimerMoneyGive_BlueTeam = GetConVarFloat(cvar_TimerMoneyGive_BlueTeam);
+	TimerMoneyGive_RedTeam = GetConVarFloat(cvar_TimerMoneyGive_RedTeam);
 
 	//if (CostIncrease_ratio_default) //quick compile warning bypass // TODO INCLUDE CostIncrease_ratio_default
 	//{
@@ -479,20 +480,18 @@ public Action:Timer_GetConVars(Handle:timer)//Reload con_vars into vars
 
 public Action:Timer_GiveSomeMoney(Handle:timer)//GIVE MONEY EVRY 5s
 {
-	new iCashtmp;
-	new HighestMoney;
-	MoneyTotalFlow[RED] = 0.00;
-	MoneyTotalFlow[BLUE] = 0.00;
+	new Float:iCashtmp;
+	new Float:HighestMoney;
 	for (new client_id = 1; client_id < MAXPLAYERS + 1; client_id++)
 	{
 		if (IsValidClient(client_id) && (GetClientTeam(client_id) > 1))
 		{
-			iCashtmp = GetEntProp(client_id, Prop_Send, "m_nCurrency", iCashtmp);
+			iCashtmp = CurrencyOwned[client_id];
 			//iCashtmp = 0
-			iCashtmp += client_spent_money[client_id][0]
+			iCashtmp += float(client_spent_money[client_id][0]
 						   +client_spent_money[client_id][1]
 						   +client_spent_money[client_id][2]
-						   +client_spent_money[client_id][3];
+						   +client_spent_money[client_id][3]);
 			if (GetClientTeam(client_id) == 3)
 			{
 				MoneyTotalFlow[BLUE] += iCashtmp;
@@ -531,37 +530,33 @@ public Action:Timer_GiveSomeMoney(Handle:timer)//GIVE MONEY EVRY 5s
 	{
 		if (IsValidClient(client_id))
 		{
-			iCashtmp = GetEntProp(client_id, Prop_Send, "m_nCurrency", iCashtmp);
+			iCashtmp = CurrencyOwned[client_id];
 			if (GetClientTeam(client_id) == 3)//BLUE TEAM
 			{
 				if (GetConVarInt(cvar_AutoMoneyForTeamRatio))
 				{
-					SetEntProp(client_id, Prop_Send, "m_nCurrency",
-								iCashtmp + RoundFloat(TimerMoneyGive_BlueTeam * MoneyForTeamRatio[BLUE]));
+					CurrencyOwned[client_id] += (TimerMoneyGive_BlueTeam * MoneyForTeamRatio[BLUE]);
 				}
 				else
 				{
-					SetEntProp(client_id, Prop_Send, "m_nCurrency",
-								iCashtmp + TimerMoneyGive_BlueTeam);
+					CurrencyOwned[client_id] += TimerMoneyGive_BlueTeam;
 				}
 			}
 			else if (GetClientTeam(client_id) == 2)//RED TEAM
 			{
 				if (GetConVarInt(cvar_AutoMoneyForTeamRatio))
 				{
-					SetEntProp(client_id, Prop_Send, "m_nCurrency",
-								iCashtmp + RoundFloat(TimerMoneyGive_RedTeam * MoneyForTeamRatio[RED]));
+					CurrencyOwned[client_id] += (TimerMoneyGive_RedTeam * MoneyForTeamRatio[RED]);
 				}
 				else
 				{
-					SetEntProp(client_id, Prop_Send, "m_nCurrency",
-								iCashtmp + TimerMoneyGive_RedTeam);
+					CurrencyOwned[client_id] += TimerMoneyGive_RedTeam;
 				}
 			}
 		}
 	}
-	TimerMoneyGive_BlueTeam = GetConVarInt(cvar_TimerMoneyGive_BlueTeam);
-	TimerMoneyGive_RedTeam = GetConVarInt(cvar_TimerMoneyGive_RedTeam);
+	TimerMoneyGive_BlueTeam = GetConVarFloat(cvar_TimerMoneyGive_BlueTeam);
+	TimerMoneyGive_RedTeam = GetConVarFloat(cvar_TimerMoneyGive_RedTeam);
 
 }
 
@@ -636,10 +631,6 @@ public OnClientDisconnect(client)
 
 public OnClientPutInServer(client)
 {
-	new iCashtmp;
-	new maxCashtmp = 0;
-
-
 	decl String:clname[255];
 	GetClientName(client, clname, sizeof(clname));
 	clientBaseName[client] = clname;
@@ -657,33 +648,8 @@ public OnClientPutInServer(client)
 	{
 		CreateTimer(0.2, ClChangeClassTimer, GetClientUserId(client));
 	}
-	if (gamemode == MVM_GAMEMODE)
-	{
-		iCashtmp = 0;
-		maxCashtmp = 0;
-		for (new client_id = 1; client_id < MAXPLAYERS + 1; client_id++)
-		{
-			if ((client_id != client) && IsValidClient(client_id) && IsPlayerAlive(client_id))
-			{
-					iCashtmp = client_spent_money[client_id][0]
-							   +client_spent_money[client_id][1]
-							   +client_spent_money[client_id][2]
-							   +client_spent_money[client_id][3];
-					if (iCashtmp > maxCashtmp)
-					{
-						maxCashtmp = iCashtmp;
-					}
-
-			}
-		}
-		//iCashtmp = GetEntProp(client, Prop_Send, "m_nCurrency", iCashtmp);
-		SetEntProp(client, Prop_Send, "m_nCurrency",maxCashtmp);
-	}
-	if (gamemode != MVM_GAMEMODE)
-	{
-		PrintToServer("realstartmoney = %d", RealStartMoney);
-		SetEntProp(client, Prop_Send, "m_nCurrency", RealStartMoney);
-	}
+	PrintToServer("realstartmoney = %f", RealStartMoney);
+	CurrencyOwned[client] = RealStartMoney
 }//
 public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)//Every single server tick.  GetTickInterval() for the seconds per tick.
 {
@@ -691,10 +657,32 @@ public Action:OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:ang
 	{
 		Menu_BuyUpgrade(client, 0);
 	}
-	new clientcash = GetEntProp(client, Prop_Send, "m_nCurrency", clientcash);
-	if(clientcash >= 2147483647 || clientcash < 0){
-		SetEntProp(client, Prop_Send, "m_nCurrency", 2147483647);
+	if(CurrencyOwned[client] >= 300000000000.0)
+	{
+		CurrencyOwned[client] = 300000000000.0;
 	}
+	if(CurrencyOwned[client] < 0.0)
+	{
+		CurrencyOwned[client] = 0.0;
+	}
+	if (IsValidClient(client))
+	{
+		TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.0);
+		SetEntProp(client, Prop_Send, "m_nCurrency", RoundFloat(CurrencyOwned[client]));
+	}
+}
+public Action:Event_PlayerCollectMoney(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	new money = GetEventInt(event, "currency");
+	RealStartMoney += money;
+	for (new i = 1; i <= MaxClients; i++) 
+	{ 
+		if (IsClientInGame(i) && IsValidClient(i)) 
+		{
+			CurrencyOwned[i] += money;
+		} 
+	}
+	SetEventInt(event, "currency", 0);
 }
 public Action:TF2_CalcIsAttackCritical(client, weapon, String:weaponname[], &bool:result) // Called whenever you shoot. 
 {
@@ -761,50 +749,34 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 
 	//}
 	new attack = GetClientOfUserId(GetEventInt(event, "attacker"));
-	new assist = GetClientOfUserId(GetEventInt(event, "assister"));
 	if (gamemode != MVM_GAMEMODE)
 	{
-		//PrintToChat(client, "client death start(nomvm)_: %d %d %d", client, attack, assist);
-		new iCash_forteam;
-
-		//PrintToChatAll("DEBUG death event: cl_dead%d cl_attack%d cl_assist%d", client, attack, assist)
-		if (IsValidClient(attack, false) && IsValidClient(client, false)
-		&& attack != client && !(GetEventInt(event, "death_flags") & 32))
+		new Float:BotMoneyKill = ((SquareRoot(MoneyBonusKill + Pow(RealStartMoney, 1.6))) * 0.6) * 2.0;
+		new Float:PlayerMoneyKill = ((SquareRoot(MoneyBonusKill + Pow(RealStartMoney, 1.9))) * 0.7) * 2.0;
+		
+		if (IsValidClient(attack, false) && IsValidClient(client) && attack != client)
 		{
-			new team_a_;
-			new iCash_a = GetEntProp(attack, Prop_Send, "m_nCurrency", iCash_a);
-			iCash_forteam = client_iCash[client] + client_spent_money[client][0]
-								   +client_spent_money[client][1]
-								   +client_spent_money[client][2]
-								   +client_spent_money[client][3];
-			iCash_forteam = RoundFloat(SquareRoot(iCash_forteam * 3.0) * MoneyForTeamRatio[team_a_]);
-
-			for(new i = 0; i < MAXPLAYERS + 1; i++)
-			{
-				if (IsValidClient(i) && i != assist && i != attack)
+			for (new i = 1; i <= MaxClients; i++) 
+			{ 
+				if (IsClientInGame(i) && IsValidClient(i)) 
 				{
-					new iCash_spec = GetEntProp(i, Prop_Send, "m_nCurrency", iCash_spec);
-					iCash_spec += (MoneyBonusKill + iCash_forteam);
-					client_iCash[i] = iCash_spec;
-					PrintToChat(i, "Player killed +%d$", (MoneyBonusKill + iCash_forteam));
-					SetEntProp(i, Prop_Send, "m_nCurrency", iCash_spec);				
-				}
-				if (IsValidClient(assist) && i == assist)
+					CurrencyOwned[i] += PlayerMoneyKill
+					PrintToChat(i, "+%.0f$",  PlayerMoneyKill)
+				} 
+			}  
+			RealStartMoney += PlayerMoneyKill;
+		}
+		if(!IsValidClient(client) && attack != client)
+		{
+			for (new i = 1; i <= MaxClients; i++) 
+			{ 
+				if (IsClientInGame(i) && IsValidClient(i)) 
 				{
-					new iCash_ass = GetEntProp(i, Prop_Send, "m_nCurrency", iCash_ass);
-					iCash_ass += (MoneyBonusKill + iCash_forteam);
-					client_iCash[i] = iCash_ass;
-					PrintToChat(i, "Kill assist +%d$", (MoneyBonusKill + iCash_forteam));
-					SetEntProp(i, Prop_Send, "m_nCurrency", iCash_ass);
-				}
-				if (IsValidClient(attack) && i == attack)
-				{
-					iCash_a = iCash_a + MoneyBonusKill + iCash_forteam;
-					client_iCash[i] = iCash_a;
-					SetEntProp(i, Prop_Send, "m_nCurrency", iCash_a);
-					PrintToChat(i, "Kill +%d$",  MoneyBonusKill + iCash_forteam);				
-				}
-			}
+					CurrencyOwned[i] += BotMoneyKill
+					PrintToChat(i, "+%.0f$", BotMoneyKill);
+				} 
+			}  
+			RealStartMoney += BotMoneyKill
 		}
 	}
 	return Plugin_Continue;
@@ -813,8 +785,8 @@ public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	//PrintToChatAll("Round start!")
 	//new full_reset = GetEventInt(event, "full_reset");
-	MoneyForTeamRatio[RED] = 1.01;
-	MoneyForTeamRatio[BLUE] = 1.01;
+	MoneyForTeamRatio[RED] = 0.9;
+	MoneyForTeamRatio[BLUE] = 0.9;
 	//if (gamemode != MVM_GAMEMODE &&  full_reset)
 	//{
 	//	for (new client_id = 1; client_id < MAXPLAYERS + 1; client_id++)
@@ -866,19 +838,23 @@ public Event_teamplay_round_win(Handle:event, const String:name[], bool:dontBroa
 	}
 }
 
-public Event_mvm_begin_wave(Handle:event, const String:name[], bool:dontBroadcast)
+public Event_mvm_wave_begin(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	new client_id;
-	//new i
-	//PrintToChatAll("EVENT MVM BEGIN WAVE")
-	gamemode = MVM_GAMEMODE;
-	for (client_id = 1; client_id < MAXPLAYERS + 1; client_id++)
+	new client_id, slot
+	PrintToServer("mvm wave begin")
+	for (client_id = 0; client_id < MAXPLAYERS + 1; client_id++)
 	{
 		if (IsValidClient(client_id))
 		{
-
-
-			//client_spent_money_mvm_chkp[client_id] = client_spent_money[client_id]
+			client_spent_money_mvm_chkp[client_id] = client_spent_money[client_id]
+			CurrencySaved[client_id] = CurrencyOwned[client_id];
+			StartMoneySaved = RealStartMoney;
+			for (slot = 0; slot < 5; slot++)
+			{
+				currentupgrades_number_mvm_chkp[client_id][slot] = currentupgrades_number[client_id][slot]
+				currentupgrades_idx_mvm_chkp[client_id][slot] = currentupgrades_idx[client_id][slot]
+				currentupgrades_val_mvm_chkp[client_id][slot] = currentupgrades_val[client_id][slot]
+			}
 			//PrintToChat(client_id, "Current checkpoint money: %d", client_spent_money_mvm_chkp[client_id])
 		}
 	}
@@ -905,7 +881,81 @@ public Event_mvm_wave_complete(Handle:event, const String:name[], bool:dontBroad
 		}
 	}
 }
-
+public Event_mvm_wave_failed(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	for (new client = 0; client < MAXPLAYERS + 1; client++)
+	{
+		if (IsValidClient(client))
+		{
+			if (!client_respawn_handled[client])
+			{
+				CreateTimer(0.2, ClChangeClassTimer, GetClientUserId(client));
+			}
+		}	
+	}
+	new slot,i
+	for (new client_id = 0; client_id < MAXPLAYERS + 1; client_id++)
+	{
+		if (IsValidClient(client_id))
+		{
+			TF2Attrib_RemoveAll(client_id);
+			CurrencyOwned[client_id] = CurrencySaved[client_id];
+			RealStartMoney = StartMoneySaved;
+			client_respawn_checkpoint[client_id] = 1
+			client_spent_money[client_id] = client_spent_money_mvm_chkp[client_id]
+			for (slot = 0; slot < 5; slot++)
+			{
+				for (i = 0; i < currentupgrades_number[client_id][slot]; i++)
+				{
+					upgrades_ref_to_idx[client_id][slot][currentupgrades_idx[client_id][slot][i]] = 20000
+				}			
+				currentupgrades_idx[client_id][slot] = currentupgrades_idx_mvm_chkp[client_id][slot]
+				currentupgrades_val[client_id][slot] = currentupgrades_val_mvm_chkp[client_id][slot]
+				currentupgrades_number[client_id][slot] = currentupgrades_number_mvm_chkp[client_id][slot]
+				for (i = 0; i < currentupgrades_number[client_id][slot]; i++)
+				{
+					upgrades_ref_to_idx[client_id][slot][currentupgrades_idx[client_id][slot][i]] = i
+				}
+				new weaponinSlot = GetPlayerWeaponSlot(client_id,slot);
+				if(IsValidEntity(weaponinSlot))
+				{
+					TF2Attrib_RemoveAll(weaponinSlot);
+					GiveNewUpgradedWeapon_(client_id, slot);
+					TF2Attrib_ClearCache(weaponinSlot);
+					//PrintToServer("Slot #%i was refreshed for client #%i",slot,client_id);
+				}
+			}
+			TF2Attrib_ClearCache(client_id);
+		}
+	}
+	PrintToServer("MvM Mission Failed");
+}
+ public Event_ResetStats(Handle:event, const String:name[], bool:dontBroadcast)
+{
+	for (new client = 0; client < MAXPLAYERS + 1; client++)
+	{
+		if (IsValidClient(client))
+		{
+			new primary = (GetPlayerWeaponSlot(client,0));
+			new secondary = (GetPlayerWeaponSlot(client,1));
+			new melee = (GetPlayerWeaponSlot(client,2));
+			TF2Attrib_RemoveAll(client);
+			TF2Attrib_RemoveAll(primary);
+			TF2Attrib_RemoveAll(secondary);
+			TF2Attrib_RemoveAll(melee);
+			current_class[client] = _:TF2_GetPlayerClass(client)
+			ResetClientUpgrades(client)
+			if (!client_respawn_handled[client])
+			{
+				CreateTimer(0.05, ClChangeClassTimer, GetClientUserId(client));
+			}
+			FakeClientCommandEx(client, "menuselect 0");
+			Menu_BuyUpgrade(client, 0);
+			CurrencyOwned[client] = 1400.0
+			RealStartMoney = 1400.0
+		}
+	}
+}
 public Action:mvm_CheckPointAdjustCash(Handle:timer, any:userid)
 {
 	new client = GetClientOfUserId(userid);
@@ -1148,7 +1198,6 @@ public Action:Menu_QuickBuyUpgrade(mclient, args)
 				if (arg2_ > -1 && arg2_ < given_upgrd_list_nb[w_id]
 				&& given_upgrd_list[w_id][arg2_][arg3_])
 				{
-					new iCash = GetEntProp(mclient, Prop_Send, "m_nCurrency", iCash);
 					new upgrade_choice = given_upgrd_list[w_id][arg2_][arg3_];
 					new inum = upgrades_ref_to_idx[mclient][arg1_][upgrade_choice];
 					if (inum == 9999)
@@ -1188,9 +1237,9 @@ public Action:Menu_QuickBuyUpgrade(mclient, args)
 								t_up_cost = upgrades_costs[upgrade_choice] / 2;
 							}
 						}
-						if (iCash < t_up_cost)
+						if (CurrencyOwned[mclient] < t_up_cost)
 						{
-							new String:buffer[64];
+							new String:buffer[128]
 							Format(buffer, sizeof(buffer), "%T", "You have not enough money!!", mclient);
 							PrintToChat(mclient, buffer);
 						}
@@ -1204,7 +1253,7 @@ public Action:Menu_QuickBuyUpgrade(mclient, args)
 							else
 							{
 								flag = true;
-								client_iCash[mclient] = iCash - t_up_cost;
+								CurrencyOwned[mclient] -= t_up_cost;
 								SetEntProp(mclient, Prop_Send, "m_nCurrency", client_iCash[mclient]);
 								currentupgrades_val[mclient][arg1_][inum] = upgrades_val;
 								client_spent_money[mclient][arg1_] += t_up_cost;
@@ -1784,20 +1833,23 @@ public UberShopinitMenusHandlers()
 	cvar_AutoMoneyForTeamRatio = 			CreateConVar("sm_uu_automoneyforteam_ratio", "1", "If set to 1, the plugin will manage money balancing");
 	////cvar_MoneyForTeamRatioRed = 			CreateConVar("sm_uu_moneyforteam_ratio", "1.00", "Sets the ratio of (money + money spent on upgrades) from a client that the team gets when killing him: default 0.05");
 	//cvar_MoneyForTeamRatioBlue = 			CreateConVar("sm_uu_moneyforteam_ratio", "1.00", "Sets the ratio of (money + money spent on upgrades) from a client that the team gets when killing him: default 0.05");
-	cvar_TimerMoneyGive_BlueTeam = 		CreateConVar("sm_uu_timermoneygive_blueteam", "100", "Sets the money blue team get every timermoney event: default 100");
-	cvar_TimerMoneyGive_RedTeam =  		CreateConVar("sm_uu_timermoneygive_redteam", "100", "Sets the money blue team get every timermoney event: default 80");
+	cvar_TimerMoneyGive_BlueTeam = 		CreateConVar("sm_uu_timermoneygive_blueteam", "100.0", "Sets the money blue team get every timermoney event: default 100.0");
+	cvar_TimerMoneyGive_RedTeam =  		CreateConVar("sm_uu_timermoneygive_redteam", "100.0", "Sets the money blue team get every timermoney event: default 80.0");
 	if (cvar_uu_version) //Compile warning fast bypass
 	{
 	}
 	//CostIncrease_ratio_default  = GetConVarFloat(cvar_CostIncrease_ratio_default)
 	MoneyBonusKill = GetConVarInt(cvar_MoneyBonusKill);
-	MoneyForTeamRatio[RED]  = 1.02;
-	MoneyForTeamRatio[BLUE]  = 1.02;
-	TimerMoneyGive_BlueTeam = GetConVarInt(cvar_TimerMoneyGive_BlueTeam);
-	TimerMoneyGive_RedTeam = GetConVarInt(cvar_TimerMoneyGive_RedTeam);
+	MoneyForTeamRatio[RED]  =  0.9;
+	MoneyForTeamRatio[BLUE]  = 0.9;
+	TimerMoneyGive_BlueTeam = GetConVarFloat(cvar_TimerMoneyGive_BlueTeam);
+	TimerMoneyGive_RedTeam = GetConVarFloat(cvar_TimerMoneyGive_RedTeam);
 
 	RegAdminCmd("sm_us_enable_buy_new_weapon", EnableBuyNewWeapon, ADMFLAG_GENERIC);
-	RegConsoleCmd("sm_spentmoney", ShowSpentMoney);
+	RegAdminCmd("sm_setcash", Command_SetCash, ADMFLAG_GENERIC, "Sets cash of selected target/targets.");
+	RegAdminCmd("sm_addcash", Command_AddCash, ADMFLAG_GENERIC, "Adds cash of selected target/targets.");
+	RegAdminCmd("sm_removecash", Command_RemoveCash, ADMFLAG_GENERIC, "Removes cash of selected target/targets.");
+	//RegConsoleCmd("sm_spentmoney", ShowSpentMoney);
 	RegAdminCmd("sm_reload_cfg", ReloadCfgFiles, ADMFLAG_GENERIC);//
 	RegConsoleCmd("sm_uudteamup", Toggl_DispTeamUpgrades);
 	RegConsoleCmd("sm_uurspwn", Toggl_DispMenuRespawn);
@@ -1816,14 +1868,13 @@ public UberShopinitMenusHandlers()
 	HookEvent("player_changeclass", Event_PlayerChangeClass);
 	HookEvent("player_class", Event_PlayerChangeClass);
 	HookEvent("player_team", Event_PlayerChangeTeam);
-	AddCommandListener(jointeam_callback, "jointeam");
-	//HookEvent("item_pickup", Event_PlayerreSpawn)
-	//HookEvent("mm_lobby_member_join", Event_OnClientPutInServer
-
-
-	HookEvent("mvm_begin_wave", Event_mvm_begin_wave);
+	//MVM
+	HookEvent("mvm_pickup_currency", Event_PlayerCollectMoney, EventHookMode_Pre)
+	HookEvent("mvm_wave_complete", Event_mvm_wave_complete);
+	HookEvent("mvm_begin_wave", Event_mvm_wave_begin);
 	HookEvent("mvm_wave_complete", Event_mvm_wave_complete);
 	HookEvent("teamplay_round_win", Event_teamplay_round_win);
+	AddCommandListener(jointeam_callback, "jointeam");
 
 	Timers_[0] = CreateTimer(20.0, Timer_GetConVars, _, TIMER_REPEAT);
 	Timers_[1] = CreateTimer(5.0, Timer_GiveSomeMoney, _, TIMER_REPEAT);
@@ -1849,7 +1900,7 @@ public UberShopUnhooks()
 	UnhookEvent("player_class", Event_PlayerChangeClass);
 	UnhookEvent("player_team", Event_PlayerChangeTeam);
 
-	UnhookEvent("mvm_begin_wave", Event_mvm_begin_wave);
+	UnhookEvent("mvm_begin_wave", Event_mvm_wave_begin);
 
 	UnhookEvent("mvm_wave_complete", Event_mvm_wave_complete);
 	UnhookEvent("teamplay_round_win", Event_teamplay_round_win);
@@ -1893,6 +1944,7 @@ public void OnPluginStart()
 	UberShopDefineUpgradeTabs();
 	SetConVarFloat(FindConVar("sv_maxvelocity"), 10000000.0, true, false); //Up the cap for the speed of projectiles
 	SetConVarInt(FindConVar("tf_weapon_criticals"), 0, true, false); //Disables random crits
+	RealStartMoney = 1400.0
 	for (new client = 0; client < MAXPLAYERS + 1; client++)
 	{
 		if (IsValidClient(client))
@@ -1906,6 +1958,7 @@ public void OnPluginStart()
 				CreateTimer(0.2, ClChangeClassTimer, GetClientUserId(client));
 			}
 			SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+			CurrencyOwned[client] = 1400.0;
 		}
 	}
 	return;
@@ -1940,7 +1993,82 @@ Engineer:
 Spy:
 [code]0 - Secondary 1 - Sapper 2 - Melee 3 - Disguise Kit 4 - Invisibility Watch[/code]
 */
+public Action:Command_SetCash(client, args)
+{
+	if(args != 2)
+	{
+		ReplyToCommand(client, "[SM] Usage: sm_setcash \"target\" \"amount\"");
+		return Plugin_Handled;
+	}
 
+	new String:strTarget[MAX_TARGET_LENGTH], String:strCash[128], Float:GivenCash, String:target_name[MAX_TARGET_LENGTH],target_list[MAXPLAYERS], target_count, bool:tn_is_ml;
+	GetCmdArg(1, strTarget, sizeof(strTarget));
+	if((target_count = ProcessTargetString(strTarget, client, target_list, MAXPLAYERS, COMMAND_FILTER_NO_BOTS, target_name, sizeof(target_name), tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+
+	GetCmdArg(2, strCash, sizeof(strCash));
+	GivenCash = StringToFloat(strCash);
+
+	for(new i = 0; i < target_count; i++)
+	{
+		CurrencyOwned[target_list[i]] = GivenCash;
+	}
+	return Plugin_Handled;
+}
+public Action:Command_AddCash(client, args)
+{
+	//PrintToChatAll("Step 1");
+	if(args != 2)
+	{
+		ReplyToCommand(client, "[SM] Usage: sm_addcash \"target\" \"amount\"");
+		return Plugin_Handled;
+	}
+	//PrintToChatAll("Step 2");
+	new String:strTarget[MAX_TARGET_LENGTH], String:strCash[128], Float:GivenCash, String:target_name[MAX_TARGET_LENGTH],target_list[MAXPLAYERS], target_count, bool:tn_is_ml;
+	GetCmdArg(1, strTarget, sizeof(strTarget));
+	if((target_count = ProcessTargetString(strTarget, client, target_list, MAXPLAYERS, COMMAND_FILTER_NO_BOTS, target_name, sizeof(target_name), tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+	//PrintToChatAll("Step 3");
+	GetCmdArg(2, strCash, sizeof(strCash));
+	GivenCash = StringToFloat(strCash);
+	for(new i = 0; i < target_count; i++)
+	{
+		//PrintToChatAll("Step 4");
+		CurrencyOwned[target_list[i]] += GivenCash;
+	}
+	return Plugin_Handled;
+}
+public Action:Command_RemoveCash(client, args)
+{
+	if(args != 2)
+	{
+		ReplyToCommand(client, "[SM] Usage: sm_removecash \"target\" \"amount\"");
+		return Plugin_Handled;
+	}
+	
+	new String:strTarget[MAX_TARGET_LENGTH], String:strCash[128], Float:GivenCash, String:target_name[MAX_TARGET_LENGTH],target_list[MAXPLAYERS], target_count, bool:tn_is_ml;
+	GetCmdArg(1, strTarget, sizeof(strTarget));
+	if((target_count = ProcessTargetString(strTarget, client, target_list, MAXPLAYERS, COMMAND_FILTER_NO_BOTS, target_name, sizeof(target_name), tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+
+	GetCmdArg(2, strCash, sizeof(strCash));
+	GivenCash = StringToFloat(strCash);
+
+	for(new i = 0; i < target_count; i++)
+	{
+		CurrencyOwned[target_list[i]] -= GivenCash;
+	}
+	return Plugin_Handled;
+}
 public bool:GiveNewWeapon(client, slot)
 {
 	new Handle:newItem = TF2Items_CreateItem(OVERRIDE_ALL);
@@ -2083,12 +2211,12 @@ public	is_client_got_req(mclient, upgrade_choice, slot, inum)
 			}
 		}
 	}
-	if (iCash < up_cost)
+	if (CurrencyOwned[mclient] < up_cost)
 	{
-		new String:buffer[64];
+		new String:buffer[128]
 		Format(buffer, sizeof(buffer), "%T", "You have not enough money!!", mclient);
 		PrintToChat(mclient, buffer);
-		return 0;
+		return 0
 	}
 	else
 	{
@@ -2128,8 +2256,7 @@ public	is_client_got_req(mclient, upgrade_choice, slot, inum)
 			// }
 		// }
 
-		client_iCash[mclient] = iCash - up_cost;
-		SetEntProp(mclient, Prop_Send, "m_nCurrency", client_iCash[mclient]);
+		CurrencyOwned[mclient] -= up_cost
 		client_spent_money[mclient][slot] += up_cost;
 		new totalmoney = 0;
 		for (new s = 0; s < 5; s++)
@@ -2213,8 +2340,7 @@ public ResetClientUpgrade_slot(client, slot)
 	//PrintToChat(client, "#resetupgrade monweyspend-> %d", client_spent_money[client][slot]);
 	if (client_spent_money[client][slot])
 	{
-		new iCash = GetEntProp(client, Prop_Send, "m_nCurrency", iCash);
-		SetEntProp(client, Prop_Send, "m_nCurrency", iCash + client_spent_money[client][slot]);
+		CurrencyOwned[client] += client_spent_money[client][slot];
 	}
 	currentitem_level[client][slot] = 0;
 	client_spent_money[client][slot] = 0;
@@ -2403,7 +2529,7 @@ public	Menu_TweakUpgrades_slot(mclient, arg)
 
 		s = arg;
 		current_slot_used[mclient] = s;
-		SetMenuTitle(menu, "%d$ ***%s - Choose attribute:", client_iCash[mclient], current_slot_name[s]);
+		SetMenuTitle(menu, "%.0f$ ***%s - Choose attribute:", CurrencyOwned[mclient], current_slot_name[s]);
 		decl String:buf[64];
 		decl String:fstr[255];
 		for (i = 0; i < currentupgrades_number[mclient][s]; i++)
@@ -2425,6 +2551,9 @@ public	Menu_TweakUpgrades_slot(mclient, arg)
 		{
 			DisplayMenu(menu, mclient, 20);
 		}
+		if (GetClientMenu(mclient) == MenuSource_None){
+		CloseHandle(menu);
+		}	
 	}
 }
 
@@ -2589,8 +2718,8 @@ public MenuHandler_SpecialUpgradeChoice(Handle:menu, MenuAction:action, mclient,
 			GiveNewUpgradedWeapon_(mclient, slot);
 			new String:buf[32];
 			Format(buf, sizeof(buf), "%T", current_slot_name[slot], mclient);
-			Format(fstr, sizeof(fstr), "%d$ [%s] - %s", client_iCash[mclient], buf,
-					given_upgrd_classnames[w_id][cat_id]);
+			Format(fstr, sizeof(fstr), "%.0f$ [%s] - %s", CurrencyOwned[mclient], buf, 
+					given_upgrd_classnames[w_id][cat_id])
 			Menu_SpecialUpgradeChoice(mclient, cat_id, fstr, GetMenuSelectionPosition());
 		}
 			//PrintToChat(mclient, "#MENU UPC FSTR=%s", fstr);
@@ -2617,13 +2746,12 @@ public MenuHandler_AttributesTweak_action(Handle:menu, MenuAction:action, client
 						new iCash = GetEntProp(client, Prop_Send, "m_nCurrency", iCash);
 						new nb_time_upgraded = RoundFloat((upgrades_i_val[u] - currentupgrades_val[client][s][param2]) / upgrades_ratio[u]);
 						new up_cost = upgrades_costs[u] * nb_time_upgraded * 3;
-						if (iCash >= up_cost)
+						if (CurrencyOwned[client] >= up_cost)
 						{
+							remove_attribute(client, param2)
+							CurrencyOwned[client] -= up_cost;
+							client_spent_money[client][s] += up_cost
 
-							remove_attribute(client, param2);
-							SetEntProp(client, Prop_Send, "m_nCurrency", iCash - up_cost);
-							client_iCash[client] = iCash;
-							client_spent_money[client][s] += up_cost;
 							new String:buffer[80];
 							Format(buffer, sizeof(buffer), "%T", "Attribute removed", client, current_slot_name[s], upgradesNames[u]);
 							PrintToChat(client,"%s", buffer);
@@ -2928,16 +3056,16 @@ public MenuHandler_UpgradeChoice(Handle:menu, MenuAction:action, mclient, param2
 			Format(fstr, sizeof(fstr), "%t", given_upgrd_classnames[w_id][cat_id],
 					mclient);
 			Format(fstr3, sizeof(fstr3), "%t", current_slot_name[slot], mclient);
-			Format(fstr2, sizeof(fstr2), "%d$ [%s] - %s", client_iCash[mclient], fstr3,
-				fstr);
+			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3,
+				fstr)
 		}
 		else
 		{
 			Format(fstr, sizeof(fstr), "%t", given_upgrd_classnames[current_class[mclient] - 1][cat_id],
 					mclient);
 			Format(fstr3, sizeof(fstr3), "%t", "Body upgrade", mclient);
-			Format(fstr2, sizeof(fstr2), "%d$ [%s] - %s", client_iCash[mclient], fstr3,
-				fstr);
+			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3,
+				fstr)
 		}
 		SetMenuTitle(menu, fstr2);
 		decl String:desc_str[255];
@@ -3025,8 +3153,8 @@ public MenuHandler_BodyUpgrades(Handle:menu, MenuAction:action, mclient, param2)
 		Format(fstr, sizeof(fstr), "%T", given_upgrd_classnames[current_class[mclient] - 1][param2],
 					mclient);
 		Format(fstr3, sizeof(fstr3), "%T", "Body upgrade", mclient);
-		Format(fstr2, sizeof(fstr2), "%d$ [%s] - %s", client_iCash[mclient], fstr3,
-				fstr);
+		Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3,
+				fstr)
 
 		Menu_UpgradeChoice(mclient, param2, fstr2);
 	}
@@ -3058,16 +3186,16 @@ public MenuHandler_Choosecat(Handle:menu, MenuAction:action, mclient, param2)
 			Format(fstr, sizeof(fstr), "%T", given_upgrd_classnames[current_class[mclient] - 1][param2],
 					mclient);
 			Format(fstr3, sizeof(fstr3), "%T", current_slot_name[slot], mclient);
-			Format(fstr2, sizeof(fstr2), "%d$ [%s] - %s", client_iCash[mclient], fstr3,
-				fstr);
+			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3,
+				fstr)
 			Menu_UpgradeChoice(mclient, param2, fstr2);
 		}
 		else
 		{
 			Format(fstr, sizeof(fstr), "%T", given_upgrd_classnames[cat_id][param2], mclient);
 			Format(fstr3, sizeof(fstr3), "%T", "Body upgrade", mclient);
-			Format(fstr2, sizeof(fstr2), "%d$ [%s] - %s", client_iCash[mclient], fstr3,
-					fstr);
+			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3, 
+					fstr)
 			if (param2 == given_upgrd_classnames_tweak_idx[cat_id])
 			{
 				Menu_SpecialUpgradeChoice(mclient, param2, fstr2,0);
@@ -3097,7 +3225,7 @@ public MenuHandler_BuyUpgrade(Handle:menu, MenuAction:action, mclient, param2)
 			current_slot_used[mclient] = 4;
 			client_iCash[mclient] = GetEntProp(mclient, Prop_Send, "m_nCurrency", client_iCash[mclient]);
 			Format(fstr, sizeof(fstr), "%T", "Body upgrade", mclient);
-			Format(fstr2, sizeof(fstr2), "%d$ [ - %s - ]", client_iCash[mclient], fstr);
+			Format(fstr2, sizeof(fstr2), "%.0f$ [ - %s - ]", CurrencyOwned[mclient], fstr)
 			Menu_ChooseCategory(mclient, fstr2);
 			//DisplayCurrentUps(mclient);
 		}
@@ -3119,8 +3247,8 @@ public MenuHandler_BuyUpgrade(Handle:menu, MenuAction:action, mclient, param2)
 
 			Format(fstr, sizeof(fstr), "%T", "Body upgrade", mclient);
 			client_iCash[mclient] = GetEntProp(mclient, Prop_Send, "m_nCurrency", client_iCash[mclient]);
-			Format(fstr2, sizeof(fstr2), "%d$ [ - Upgrade %s - ]", client_iCash[mclient]
-															  ,fstr);
+			Format(fstr2, sizeof(fstr2), "%.0f$ [ - Upgrade %s - ]", CurrencyOwned[mclient]
+															  ,fstr)
 			Menu_ChooseCategory(mclient, fstr2);
 		}
 		else
@@ -3131,8 +3259,8 @@ public MenuHandler_BuyUpgrade(Handle:menu, MenuAction:action, mclient, param2)
 			current_slot_used[mclient] = param2;
 			Format(fstr, sizeof(fstr), "%T", current_slot_name[param2], mclient);
 			client_iCash[mclient] = GetEntProp(mclient, Prop_Send, "m_nCurrency", client_iCash[mclient]);
-			Format(fstr2, sizeof(fstr2), "%d$ [ - Upgrade %s - ]", client_iCash[mclient]
-															  ,fstr);
+			Format(fstr2, sizeof(fstr2), "%.0f$ [ - Upgrade %s - ]", CurrencyOwned[mclient]
+															  ,fstr)
 			Menu_ChooseCategory(mclient, fstr2);
 
 		}
@@ -3236,7 +3364,13 @@ public Action:Timer_GiveHealth(Handle:timer)//give health every 0.333 seconds
 		}
 	}
 }
-
+public OnClientPostAdminCheck(client)
+{
+	if(IsValidClient(client))
+	{
+		CurrencyOwned[client] = RealStartMoney;
+	}
+} 
 RespawnEffect(client)
 {
 	current_class[client] = _:TF2_GetPlayerClass(client);
