@@ -4,7 +4,7 @@ The repo already has all of the plugins and requirements, so it's really just a 
 
 ^ all of this is windows, so it kinda is a fortnite moment for those who aren't running windows.
 
-discord.gg/VpNBD5q <- discord server
+discord.gg/QZd9FbG <- discord server
 
 Credits:
 Tylerst - Code for Setcash
