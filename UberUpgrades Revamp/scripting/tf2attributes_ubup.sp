@@ -14,21 +14,21 @@
 #define RED 0
 #define BLUE 1
 
-#define NB_B_WEAPONS 37
+#define NB_B_WEAPONS 1
 
 #define NB_SLOTS_UED 5
 
 #define MAX_ATTRIBUTES 3000
 
-#define MAX_ATTRIBUTES_ITEM 42
+#define MAX_ATTRIBUTES_ITEM 65
 
-#define _NUMBER_DEFINELISTS 90
+#define _NUMBER_DEFINELISTS 630
 
-#define _NUMBER_DEFINELISTS_CAT 8
+#define _NUMBER_DEFINELISTS_CAT 9
 
-#define WCNAMELISTSIZE 90
+#define WCNAMELISTSIZE 700
 
-#define _NB_SP_TWEAKS 90
+#define _NB_SP_TWEAKS 60
 #define MAXLEVEL_D 500
 
 new Handle:up_menus[MAXPLAYERS + 1];
@@ -282,6 +282,7 @@ public TF2Items_OnGiveNamedItem_Post(client, String:classname[], itemDefinitionI
 					GiveNewUpgradedWeapon_(client, 0);
 				}
 			}
+			currentitem_catidx[client][4] = _:TF2_GetPlayerClass(client) - 1;
 			if (slot < 3)
 			{
 				GetEntityClassname(entityIndex, currentitem_classname[client][slot], 64);
@@ -626,7 +627,6 @@ public OnClientDisconnect(client)
 	{
 		return;
 	}
-	SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 }
 
 public OnClientPutInServer(client)
@@ -642,8 +642,6 @@ public OnClientPutInServer(client)
 	client_no_d_name[client] = 1;
 	ResetClientUpgrades(client);
 	current_class[client] = _:TF2_GetPlayerClass(client);
-	SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
-	//PrintToChat(client, "client changeclass");
 	if (!client_respawn_handled[client])
 	{
 		CreateTimer(0.2, ClChangeClassTimer, GetClientUserId(client));
@@ -1027,7 +1025,7 @@ public Action:jointeam_callback(client, const String:command[], argc) //protecti
 	}
 	if (gamemode != MVM_GAMEMODE)
 	{
-		PrintToServer("give to client %d startmoney",RealStartMoney);
+		PrintToServer("give to client %.0f startmoney",RealStartMoney);
 		//iCashtmp = GetEntProp(client, Prop_Send, "m_nCurrency", iCashtmp);
 		SetEntProp(client, Prop_Send, "m_nCurrency",RealStartMoney);
 	}		
@@ -1163,147 +1161,163 @@ public Action:EnableBuyNewWeapon(client, args)
 public Action:Menu_QuickBuyUpgrade(mclient, args)
 {
 	new String:arg1[32];
-	new arg1_;
+	new arg1_ = -1;
 	new String:arg2[32];
-	new arg2_;
+	new arg2_ = -1;
 	new String:arg3[32];
-	new arg3_ = 0;
+	new arg3_ = -1;
 	new String:arg4[32];
 	new arg4_ = 0;
-	new	bool:flag = false;
-	if(client_no_d_team_upgrade[mclient] == 5 || IsPlayerAlive(mclient)){
-	if (GetCmdArg(1, arg1, sizeof(arg1)))
+	new	bool:flag = false
+	if (IsValidClient(mclient) && IsPlayerAlive(mclient))
 	{
-		arg1_ = StringToInt(arg1);//SLOT USED
-		if (arg1_ > -1 && arg1_ < 5 && GetCmdArg(2, arg2, sizeof(arg2)))
+		if (GetCmdArg(1, arg1, sizeof(arg1)))
 		{
-			new w_id = currentitem_catidx[mclient][arg1_];
-			arg2_ = StringToInt(arg2);
-			if (GetCmdArg(3, arg3, sizeof(arg3)))
+			arg2_ = -1
+			arg3_ = -1
+			if(!strcmp("1", arg1)){
+			arg1_ = 4;
+			}
+			if(!strcmp("2", arg1)){
+			arg1_ = 0;
+			}
+			if(!strcmp("3", arg1)){
+			arg1_ = 1;
+			}
+			if(!strcmp("4", arg1)){
+			arg1_ = 2;
+			}
+			if (arg1_ > -1 && arg1_ < 5 && GetCmdArg(2, arg2, sizeof(arg2)))
 			{
-				arg3_ = StringToInt(arg3);
-				arg4_ = 1;
-				if (GetCmdArg(4, arg4, sizeof(arg4)))
+				new w_id = currentitem_catidx[mclient][arg1_]
+				arg2_ = StringToInt(arg2)-1;
+				if (GetCmdArg(3, arg3, sizeof(arg3)))
 				{
-					arg4_ = StringToInt(arg4);
-					if (arg4_ >= 1000000)
+					arg3_ = StringToInt(arg3)-1;
+					arg4_ = 1
+					if (GetCmdArg(4, arg4, sizeof(arg4)))
 					{
-						arg4_ = 1000000;
-					}
-					if (arg4_ < 1)
-					{
-						arg4_ = 1;
-					}
-				}
-				if (arg2_ > -1 && arg2_ < given_upgrd_list_nb[w_id]
-				&& given_upgrd_list[w_id][arg2_][arg3_])
-				{
-					new upgrade_choice = given_upgrd_list[w_id][arg2_][arg3_];
-					new inum = upgrades_ref_to_idx[mclient][arg1_][upgrade_choice];
-					if (inum == 9999)
-					{
-						inum = currentupgrades_number[mclient][arg1_];
-						currentupgrades_number[mclient][arg1_]++;
-						upgrades_ref_to_idx[mclient][arg1_][upgrade_choice] = inum;
-						currentupgrades_idx[mclient][arg1_][inum] = upgrade_choice;
-						currentupgrades_val[mclient][arg1_][inum] = upgrades_i_val[upgrade_choice];
-					}
-					new idx_currentupgrades_val = RoundFloat((currentupgrades_val[mclient][arg1_][inum] - upgrades_i_val[upgrade_choice])
-																 / upgrades_ratio[upgrade_choice]);
-					new Float:upgrades_val = currentupgrades_val[mclient][arg1_][inum];
-					new up_cost = upgrades_costs[upgrade_choice];
-					up_cost /= 2;
-					if (arg1_ == 1)
-					{
-						up_cost = RoundFloat((up_cost * 1.0) * 0.9);
-					}
-					if (inum != 9999 && upgrades_ratio[upgrade_choice])
-					{
-						new t_up_cost = 0;
-						for (new idx = 0; idx < arg4_; idx++)
+						arg4_ = StringToInt(arg4);
+						if (arg4_ >= 100000)
 						{
-							t_up_cost += up_cost + RoundFloat(up_cost * (
-														 idx_currentupgrades_val
-															 * upgrades_costs_inc_ratio[upgrade_choice]));
-							idx_currentupgrades_val++;
-							upgrades_val += upgrades_ratio[upgrade_choice];
+							arg4_ = 100000
 						}
-
-						if (t_up_cost < 0.0)
+						if (arg4_ < 1)
 						{
-							t_up_cost *= -1;
-							if (t_up_cost < (upgrades_costs[upgrade_choice] / 2))
+							arg4_ = 1
+						}
+					}
+					
+					
+					if (arg2_ > -1 && arg2_ < given_upgrd_list_nb[w_id] && given_upgrd_list[w_id][arg2_][arg3_])
+					{
+						new upgrade_choice = given_upgrd_list[w_id][arg2_][arg3_]
+						new inum = upgrades_ref_to_idx[mclient][arg1_][upgrade_choice]
+						if (inum == 9999)
+						{
+							inum = currentupgrades_number[mclient][arg1_]
+							currentupgrades_number[mclient][arg1_]++
+							upgrades_ref_to_idx[mclient][arg1_][upgrade_choice] = inum;
+							currentupgrades_idx[mclient][arg1_][inum] = upgrade_choice 
+							currentupgrades_val[mclient][arg1_][inum] = upgrades_i_val[upgrade_choice];
+						}
+						new idx_currentupgrades_val = RoundToNearest((currentupgrades_val[mclient][arg1_][inum] - upgrades_i_val[upgrade_choice])/ upgrades_ratio[upgrade_choice])
+						new Float:upgrades_val = currentupgrades_val[mclient][arg1_][inum]
+						new up_cost = upgrades_costs[upgrade_choice]
+						up_cost /= 2
+						if (arg1_ == 1)
+						{
+							up_cost = RoundFloat((up_cost * 1.0) * 0.9)
+						}
+						if (inum != 9999 && upgrades_ratio[upgrade_choice])
+						{
+							new t_up_cost = 0
+							for (new idx = 0; idx < arg4_; idx++)
 							{
-								t_up_cost = upgrades_costs[upgrade_choice] / 2;
+								if(upgrades_ratio[upgrade_choice] > 0.0 && upgrades_val < upgrades_m_val[upgrade_choice])
+								{
+									t_up_cost += up_cost + RoundFloat(up_cost * (
+																idx_currentupgrades_val
+																	* upgrades_costs_inc_ratio[upgrade_choice]))
+									idx_currentupgrades_val++		
+									upgrades_val += upgrades_ratio[upgrade_choice]
+								}
+								if(upgrades_ratio[upgrade_choice] < 0.0 && upgrades_val > upgrades_m_val[upgrade_choice])
+								{
+									t_up_cost += up_cost + RoundFloat(up_cost * (
+																idx_currentupgrades_val
+																	* upgrades_costs_inc_ratio[upgrade_choice]))
+									idx_currentupgrades_val++		
+									upgrades_val += upgrades_ratio[upgrade_choice]
+								}
 							}
-						}
-						if (CurrencyOwned[mclient] < t_up_cost)
-						{
-							new String:buffer[128]
-							Format(buffer, sizeof(buffer), "%T", "You have not enough money!!", mclient);
-							PrintToChat(mclient, buffer);
-						}
-						else
-						{
-							if ((upgrades_ratio[upgrade_choice] > 0.0 && upgrades_val >= upgrades_m_val[upgrade_choice])
-							|| (upgrades_ratio[upgrade_choice] < 0.0 && upgrades_val <= upgrades_m_val[upgrade_choice]))
+												
+							if (t_up_cost < 0.0)
 							{
-								PrintToChat(mclient, "Maximum upgrade value reached for this category.");
+								t_up_cost *= -1;
+								if (t_up_cost < (upgrades_costs[upgrade_choice] / 2))
+								{
+									t_up_cost = upgrades_costs[upgrade_choice] / 2
+								}
+							}
+							if (CurrencyOwned[mclient] < t_up_cost)
+							{
+								new String:buffer[128]
+								Format(buffer, sizeof(buffer), "%T", "You have not enough money!!", mclient);
+								PrintToChat(mclient, buffer);
 							}
 							else
 							{
-								flag = true;
-								CurrencyOwned[mclient] -= t_up_cost;
-								SetEntProp(mclient, Prop_Send, "m_nCurrency", client_iCash[mclient]);
-								currentupgrades_val[mclient][arg1_][inum] = upgrades_val;
-								client_spent_money[mclient][arg1_] += t_up_cost;
-								new totalmoney = 0;
-
-								for (new s = 0; s < 5; s++)
+								if ((upgrades_ratio[upgrade_choice] > 0.0 && upgrades_val > upgrades_m_val[upgrade_choice])
+								|| (upgrades_ratio[upgrade_choice] < 0.0 && upgrades_val < upgrades_m_val[upgrade_choice]))
 								{
-									totalmoney += client_spent_money[mclient][s];
+									PrintToChat(mclient, "Maximum upgrade value reached for this category.");
+									flag = true
+									currentupgrades_val[mclient][arg1_][inum] = upgrades_val
+									CurrencyOwned[mclient] -= t_up_cost;
+									check_apply_maxvalue(mclient, arg1_, inum, upgrade_choice)
+									client_spent_money[mclient][arg1_] += t_up_cost;
+									new totalmoney = 0
+								
+									for (new s = 0; s < 5; s++)
+									{
+										totalmoney += client_spent_money[mclient][s]
+									}
+									GiveNewUpgradedWeapon_(mclient, arg1_)									
 								}
-								new ctr_m = clientLevels[mclient];
-
-								while (ctr_m < MAXLEVEL_D && totalmoney > moneyLevels[ctr_m])
+								else
 								{
-									ctr_m++;
+									flag = true
+									CurrencyOwned[mclient] -= t_up_cost;
+									currentupgrades_val[mclient][arg1_][inum] = upgrades_val
+									check_apply_maxvalue(mclient, arg1_, inum, upgrade_choice)
+									client_spent_money[mclient][arg1_] += t_up_cost
+									new totalmoney = 0
+								
+									for (new s = 0; s < 5; s++)
+									{
+										totalmoney += client_spent_money[mclient][s]
+									}
+									GiveNewUpgradedWeapon_(mclient, arg1_)
+									PrintToChat(mclient, "yep");
 								}
-								if (ctr_m != clientLevels[mclient])
-								{
-									clientLevels[mclient] = ctr_m;
-									decl String:clname[255];
-									new String:strsn[12];
-									if (ctr_m == MAXLEVEL_D )
-									{
-										strsn = "[_Over9000]";
-									}
-									else
-									{
-										Format(strsn, sizeof(strsn), "[Lvl %d]", ctr_m + 1);
-									}
-									Format(clname, sizeof(clname), "%s%s", strsn, clientBaseName[mclient]);
-									if(client_no_d_name[mclient] == 1)
-									{
-										SetClientInfo(mclient, "name", clname);
-									}
-								}
-								GiveNewUpgradedWeapon_(mclient, arg1_);
-								PrintToChat(mclient, "yep");
 							}
 						}
 					}
 				}
 			}
 		}
+		if (!flag)
+		{
+			ReplyToCommand(mclient, "Usage: /qbuy [Slot buy #] [Category #] [Upgrade #] [# to buy]");
+			ReplyToCommand(mclient, "Example : /qbuy 1 1 1 100 = buy health 100 times");
+		}
 	}
-	}
-	if (!flag)
+	else
 	{
-		PrintToChat(mclient, "Usage: /qbuy [slot 0] [upgrade menu cat 0-n] [upgrade menu entry 0-n] [nb of buy]");
-		PrintToChat(mclient, "slot : 0 primary 1 secondary 2 melee 3 special 4 body");
-		PrintToChat(mclient, "for example /qbuy 4 0 1 10 will make you buy health regen 10 times");
+		ReplyToCommand(mclient, "You cannot quick-buy while dead.");
 	}
+	return Plugin_Handled;
 }
 GetWeaponsCatKVSize(Handle:kv)
 {
@@ -1642,152 +1656,6 @@ public _load_cfg_files()
 	newweaponcn[0] = "tf_weapon_scattergun";
 	newweaponmenudesc[0] = "Scattergun";
 
-	newweaponidx[1] = 45;
-	newweaponcn[1] = "tf_weapon_scattergun";
-	newweaponmenudesc[1] = "Force-A-Nature";
-
-	newweaponidx[2] = 220;
-	newweaponcn[2] = "tf_weapon_handgun_scout_primary";
-	newweaponmenudesc[2] = "The Shortstop";
-
-	newweaponidx[3] = 772;
-	newweaponcn[3] = "tf_weapon_scattergun";
-	newweaponmenudesc[3] = "Baby Face's Blaster";
-
-	newweaponidx[4] = 18;
-	newweaponcn[4] = "tf_weapon_rocketlauncher";
-	newweaponmenudesc[4] = "Rocket Launcher";
-
-	newweaponidx[5] = 127;
-	newweaponcn[5] = "tf_weapon_rocketlauncher_directhit";
-	newweaponmenudesc[5] = "The Direct Hit";
-
-	newweaponidx[6] = 228;
-	newweaponcn[6] = "tf_weapon_rocketlauncher";
-	newweaponmenudesc[6] = "The Black Box";
-
-	newweaponidx[7] = 414;
-	newweaponcn[7] = "tf_weapon_rocketlauncher";
-	newweaponmenudesc[7] = "The Libery Launcher";
-
-	newweaponidx[8] = 441;
-	newweaponcn[8] = "tf_weapon_particle_cannon";
-	newweaponmenudesc[8] = "The Cow Mangler 5000";
-
-	newweaponidx[9] = 730;
-	newweaponcn[9] = "tf_weapon_rocketlauncher";
-	newweaponmenudesc[9] = "The Begger's Bazooka";
-
-	newweaponidx[10] = 21;
-	newweaponcn[10] = "tf_weapon_flamethrower";
-	newweaponmenudesc[10] = "Flamethrower";
-
-	newweaponidx[11] = 40;
-	newweaponcn[11] = "tf_weapon_flamethrower";
-	newweaponmenudesc[11] = "The Backburner";
-
-	newweaponidx[12] = 215;
-	newweaponcn[12] = "tf_weapon_flamethrower";
-	newweaponmenudesc[12] = "The Degreaser";
-
-	newweaponidx[13] = 594;
-	newweaponcn[13] = "tf_weapon_flamethrower";
-	newweaponmenudesc[13] = "The Phlogistinator";
-
-	newweaponidx[14] = 19;
-	newweaponcn[14] = "tf_weapon_grenadelauncher";
-	newweaponmenudesc[14] = "Grenade Launcher";
-
-	newweaponidx[15] = 308;
-	newweaponcn[15] = "tf_weapon_grenadelauncher";
-	newweaponmenudesc[15] = "The Loch-n-Load";
-
-	newweaponidx[16] = 996;
-	newweaponcn[16] = "tf_weapon_cannon";
-	newweaponmenudesc[16] = "The Loose Cannon";
-
-	newweaponidx[17] = 15;
-	newweaponcn[17] = "tf_weapon_minigun";
-	newweaponmenudesc[17] = "Minigun";
-
-	newweaponidx[18] = 298;
-	newweaponcn[18] = "tf_weapon_minigun";
-	newweaponmenudesc[18] = "Iron Curtain";
-
-	newweaponidx[19] = 312;
-	newweaponcn[19] = "tf_weapon_minigun";
-	newweaponmenudesc[19] = "The Brass Beast";
-
-	newweaponidx[20] = 9;
-	newweaponcn[20] = "tf_weapon_shotgun";
-	newweaponmenudesc[20] = "Engineer's Shotgun";
-
-	newweaponidx[21] = 588;
-	newweaponcn[21] = "tf_weapon_drg_pomson";
-	newweaponmenudesc[21] = "The Pomson 6000";
-
-	newweaponidx[22] = 997;
-	newweaponcn[22] = "tf_weapon_shotgun_building_rescue";
-	newweaponmenudesc[22] = "The Rescue Ranger";
-
-	newweaponidx[23] = 17;
-	newweaponcn[23] = "tf_weapon_syringegun_medic";
-	newweaponmenudesc[23] = "Syringe Gun";
-
-	newweaponidx[24] = 36;
-	newweaponcn[24] = "tf_weapon_syringegun_medic";
-	newweaponmenudesc[24] = "The Blutsauger";
-
-	newweaponidx[25] = 305;
-	newweaponcn[25] = "tf_weapon_crossbow";
-	newweaponmenudesc[25] = "Crusader's Crossbow";
-
-	newweaponidx[26] = 14;
-	newweaponcn[26] = "tf_weapon_sniperrifle";
-	newweaponmenudesc[26] = "Sniper Rifle";
-
-	newweaponidx[27] = 56;
-	newweaponcn[27] = "tf_weapon_compound_bow";
-	newweaponmenudesc[27] = "The Huntsman";
-
-	newweaponidx[28] = 230;
-	newweaponcn[28] = "tf_weapon_sniperrifle";
-	newweaponmenudesc[28] = "The Sydney Sleeper";
-
-	newweaponidx[29] = 24;
-	newweaponcn[29] = "tf_weapon_revolver";
-	newweaponmenudesc[29] = "Revolver";
-
-	newweaponidx[30] = 4;
-	newweaponcn[30] = "tf_weapon_knife";
-	newweaponmenudesc[30] = "Knife";
-
-	newweaponidx[31] = 30;
-	newweaponcn[31] = "tf_weapon_invis";
-	newweaponmenudesc[31] = "Watch";
-
-	newweaponidx[32] = 29;
-	newweaponcn[32] = "tf_weapon_medigun";
-	newweaponmenudesc[32] = "Medigun";
-
-	newweaponidx[33] = 357;
-	newweaponcn[33] = "tf_weapon_katana";
-	newweaponmenudesc[33] = "The Half-Zatoichi";
-
-	newweaponidx[34] = 20;
-	newweaponcn[34] = "tf_weapon_pipebomblauncher";
-	newweaponmenudesc[34] = "Pipebomb launcher";
-
-	newweaponidx[35] = 58;
-	newweaponcn[35] = "tf_weapon_jar";
-	newweaponmenudesc[35] = "Jarate";
-
-	newweaponidx[36] = 25;
-	newweaponcn[36] = "tf_weapon_pda_engineer_build";
-	newweaponmenudesc[36] = "engie pda";
-
-
-
 	CreateBuyNewWeaponMenu();
 	return true;
 }
@@ -1957,7 +1825,6 @@ public void OnPluginStart()
 			{
 				CreateTimer(0.2, ClChangeClassTimer, GetClientUserId(client));
 			}
-			SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 			CurrencyOwned[client] = 1400.0;
 		}
 	}
@@ -2518,32 +2385,33 @@ public	Menu_TweakUpgrades(mclient)
 	}
 }
 
-public	Menu_TweakUpgrades_slot(mclient, arg)
+public	Menu_TweakUpgrades_slot(mclient, arg, page)
 {
 	if (arg > -1 && arg < 5
-	&& IsValidClient(mclient)
+	&& IsValidClient(mclient) 
 	&& IsPlayerAlive(mclient))
 	{
 		new Handle:menu = CreateMenu(MenuHandler_AttributesTweak_action);
-		new i, s;
-
+		new i, s
+			
 		s = arg;
 		current_slot_used[mclient] = s;
 		SetMenuTitle(menu, "%.0f$ ***%s - Choose attribute:", CurrencyOwned[mclient], current_slot_name[s]);
-		decl String:buf[64];
-		decl String:fstr[255];
+		decl String:buf[128]
+		decl String:fstr[255]
 		for (i = 0; i < currentupgrades_number[mclient][s]; i++)
 		{
-			new u = currentupgrades_idx[mclient][s][i];
-			Format(buf, sizeof(buf), "%T", upgradesNames[u], mclient);
+			new u = currentupgrades_idx[mclient][s][i]
+			Format(buf, sizeof(buf), "%T", upgradesNames[u], mclient)
 			if (upgrades_costs[u] < -0.0001)
 			{
-				Format(fstr, sizeof(fstr), "[%s] :\n\t\t%10.2f\n%d", buf, currentupgrades_val[mclient][s][i],
-				RoundFloat(upgrades_costs[u] * ((upgrades_i_val[u] - currentupgrades_val[mclient][s][i]) / upgrades_ratio[u]) * 3));
+				new nb_time_upgraded = RoundFloat((upgrades_i_val[u] - currentupgrades_val[mclient][s][i]) / upgrades_ratio[u]);
+				new up_cost = upgrades_costs[u] * nb_time_upgraded * 3;
+				Format(fstr, sizeof(fstr), "[%s] :\n\t\t%10.2f\n%d", buf, currentupgrades_val[mclient][s][i],up_cost)
 			}
 			else
 			{
-				Format(fstr, sizeof(fstr), "[%s] :\n\t\t%10.2f", buf, currentupgrades_val[mclient][s][i]);
+				Format(fstr, sizeof(fstr), "[%s] :\n\t\t%10.2f", buf, currentupgrades_val[mclient][s][i])
 			}
 			AddMenuItem(menu, "yep", fstr);
 		}
@@ -2551,9 +2419,7 @@ public	Menu_TweakUpgrades_slot(mclient, arg)
 		{
 			DisplayMenu(menu, mclient, 20);
 		}
-		if (GetClientMenu(mclient) == MenuSource_None){
-		CloseHandle(menu);
-		}	
+		DisplayMenuAtItem(menu, mclient, page, MENU_TIME_FOREVER);
 	}
 }
 
@@ -2738,45 +2604,37 @@ public MenuHandler_AttributesTweak_action(Handle:menu, MenuAction:action, client
 		{
 			if (param2 >= 0)
 			{
-				new u = currentupgrades_idx[client][s][param2];
-				if (u != 9999)
+				new u = currentupgrades_idx[client][s][param2]
+				if (u != 20000)
 				{
 					if (upgrades_costs[u] < -0.0001)
 					{
-						new iCash = GetEntProp(client, Prop_Send, "m_nCurrency", iCash);
-						new nb_time_upgraded = RoundFloat((upgrades_i_val[u] - currentupgrades_val[client][s][param2]) / upgrades_ratio[u]);
-						new up_cost = upgrades_costs[u] * nb_time_upgraded * 3;
+						new nb_time_upgraded = RoundFloat((upgrades_i_val[u] - currentupgrades_val[client][s][param2]) / upgrades_ratio[u])
+						new up_cost = upgrades_costs[u] * nb_time_upgraded * 3
 						if (CurrencyOwned[client] >= up_cost)
 						{
 							remove_attribute(client, param2)
 							CurrencyOwned[client] -= up_cost;
 							client_spent_money[client][s] += up_cost
-
-							new String:buffer[80];
-							Format(buffer, sizeof(buffer), "%T", "Attribute removed", client, current_slot_name[s], upgradesNames[u]);
-							PrintToChat(client,"%s", buffer);
 						}
 						else
 						{
-							new String:buffer[64];
+							new String:buffer[128]
 							Format(buffer, sizeof(buffer), "%T", "You have not enough money!!", client);
 							PrintToChat(client, buffer);
 						}
 					}
 					else
 					{
-						PrintToChat(client,"Nope.");
+						PrintToChat(client,"Attribute is Unremovable")
 					}
+					Menu_TweakUpgrades_slot(client, s, GetMenuSelectionPosition())
 				}
 			}
 		}
 	}
-	else if (action == MenuAction_End)
-	{
-		CloseHandle(menu);
-	}
-	//return Plugin_Handled;
 }
+
 
 
 //menubuy 1-chose the item attribute to tweak
@@ -2784,7 +2642,7 @@ public MenuHandler_AttributesTweak(Handle:menu, MenuAction:action, client, param
 {
 	if (IsValidClient(client) && IsPlayerAlive(client) && !client_respawn_checkpoint[client])
 	{
-		Menu_TweakUpgrades_slot(client, param2);
+		Menu_TweakUpgrades_slot(client, param2, 0);
 	}
 	else if (action == MenuAction_End)
 	{
@@ -3271,68 +3129,7 @@ public MenuHandler_BuyUpgrade(Handle:menu, MenuAction:action, mclient, param2)
 	}
 	//return Plugin_Handled;
 }
-//some edits or something
-public OnEntityCreated(entity, const char[] classname)
-{
-	if(StrEqual(classname, "tf_projectile_energy_ball"))
-	{
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
-	}
-	else if(StrEqual(classname, "tf_projectile_mechanicalarmorb"))
-	{
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
-	}
-	else if(StrEqual(classname, "tf_projectile_energy_ring"))
-	{
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
-	}
-	else if(StrEqual(classname, "tf_projectile_arrow") || StrEqual(classname, "tf_projectile_healing_bolt"))
-    {
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
-	}
-}
-public Action:delay(Handle:timer, any:ref) // Fix for projectile speed not working on certain projectiles.
-{ 
-    new entity = EntRefToEntIndex(ref); 
 
-    if(IsValidEdict(entity)) 
-    { 
-		int client;
-		client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
-		if(IsValidClient(client))
-		{
-			new ClientWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-			new Address:projspeed = TF2Attrib_GetByName(ClientWeapon, "Projectile speed increased");
-			if(projspeed != Address_Null){
-				new Float:vAngles[3];
-				new Float:vPosition[3];
-				GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vPosition);
-				GetEntPropVector(entity, Prop_Data, "m_angRotation", vAngles);
-				decl Float:vBuffer[3];
-				GetAngleVectors(vAngles, vBuffer, NULL_VECTOR, NULL_VECTOR);
-				decl Float:vVelocity[3];
-				new Float:projspd = TF2Attrib_GetValue(projspeed);
-				new Float:vel[3];
-				GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
-				vVelocity[0] = vBuffer[0]*projspd*GetVectorLength(vel);
-				vVelocity[1] = vBuffer[1]*projspd*GetVectorLength(vel);
-				vVelocity[2] = vBuffer[2]*projspd*GetVectorLength(vel);
-				TeleportEntity(entity, NULL_VECTOR, NULL_VECTOR, vVelocity);
-				SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vVelocity);
-			}
-		}
-    } 
-}
-public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype, &weapon, Float:damageForce[3], Float:damagePosition[3], damagecustom)
-{
-	if(victim > 0 && victim <= MaxClients && attacker > 0 && attacker <= MaxClients)
-	{
-		if(IsPlayerAlive(attacker) && IsPlayerAlive(victim))
-		{
-		}
-	}
-	return Plugin_Changed;//prevent only one modifier being used.
-}
 stock int TF2_GetPlayerMaxHealth(int client) {
 	return GetEntProp(GetPlayerResourceEntity(), Prop_Send, "m_iMaxHealth", _, client);
 }
