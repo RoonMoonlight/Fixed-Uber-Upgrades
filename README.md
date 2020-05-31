@@ -2,7 +2,7 @@
 This is a public modification of Uberupgrades. I mainly feel this is needed due to the abandonment of the owner.
 The repo already has all of the plugins and requirements, so it's really just a drag and drop moment.
 
-^ all of this is windows, so it kinda is a fortnite moment for those who aren't running windows.
+If you want to run it, add "sm plugins reload tf2attributes_ubup" to server.cfg so your uberupgrades will actually load every time your server restarts or map changes.
 
 discord.gg/FPxywaa <- discord server
 
