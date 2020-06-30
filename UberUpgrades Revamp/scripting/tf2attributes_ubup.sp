@@ -124,10 +124,6 @@ new upgrades_tweaks_nb_att[_NB_SP_TWEAKS];
 new upgrades_tweaks_att_idx[_NB_SP_TWEAKS][10];
 new Float:upgrades_tweaks_att_ratio[_NB_SP_TWEAKS][10];
 
-new gamemode;
-#define MVM_GAMEMODE 0
-#define CP_GAMEMODE 1
-
 new newweaponidx[128];
 new String:newweaponcn[64][64];
 new String:newweaponmenudesc[64][64];
@@ -137,6 +133,24 @@ new Float:RealStartMoney = 0.0;
 
 new Float:CurrencySaved[MAXPLAYERS + 1];
 new Float:StartMoneySaved;
+
+stock bool:IsMvM(bool:forceRecalc = false)
+{
+	static bool:found = false;
+	static bool:ismvm = false;
+	if (forceRecalc)
+	{
+		found = false;
+		ismvm = false;
+	}
+	if (!found)
+	{
+		new i = FindEntityByClassname(-1, "tf_logic_mann_vs_machine");
+		if (i > MaxClients && IsValidEntity(i)) ismvm = true;
+		found = true;
+	}
+	return ismvm;
+}
 
 public Action:Timer_WaitForTF2II(Handle:timer)
 {
@@ -747,10 +761,10 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 
 	//}
 	new attack = GetClientOfUserId(GetEventInt(event, "attacker"));
-	if (gamemode != MVM_GAMEMODE)
+	if(!IsMvM())
 	{
-		new Float:BotMoneyKill = ((SquareRoot(MoneyBonusKill + Pow(RealStartMoney, 1.6))) * 0.6) * 2.0;
-		new Float:PlayerMoneyKill = ((SquareRoot(MoneyBonusKill + Pow(RealStartMoney, 1.9))) * 0.7) * 2.0;
+		new Float:BotMoneyKill = 100.0+((SquareRoot(MoneyBonusKill + Pow(RealStartMoney, 0.9))) * 0.5) * 3.0
+		new Float:PlayerMoneyKill = 100.0+((SquareRoot(MoneyBonusKill + Pow(RealStartMoney, 0.95))) * 0.7) * 3.0
 		
 		if (IsValidClient(attack, false) && IsValidClient(client) && attack != client)
 		{
@@ -781,29 +795,15 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 }
 public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	//PrintToChatAll("Round start!")
-	//new full_reset = GetEventInt(event, "full_reset");
 	MoneyForTeamRatio[RED] = 0.9;
 	MoneyForTeamRatio[BLUE] = 0.9;
-	//if (gamemode != MVM_GAMEMODE &&  full_reset)
-	//{
-	//	for (new client_id = 1; client_id < MAXPLAYERS + 1; client_id++)
-	//	{
-	//		if (IsValidClient(client_id, false))
-	//		{
-	//			CreateTimer(0.3, Timer_Resetupgrades, GetClientUserId(client_id));
-	//		}
-	//	}
-
-	//}
-
 }
 
 public Event_teamplay_round_win(Handle:event, const String:name[], bool:dontBroadcast)
 {
 	new slot, i;
 	new team = GetEventInt(event, "team");
-	if (gamemode == MVM_GAMEMODE && team == 3)
+	if (IsMvM() && team == 3)
 	{
 		//PrintToChatAll("bot TEAM wins!")
 		for (new client_id = 1; client_id < MAXPLAYERS + 1; client_id++)
@@ -1023,7 +1023,7 @@ public Action:jointeam_callback(client, const String:command[], argc) //protecti
 	{
 		CreateTimer(0.2, ClChangeClassTimer, GetClientUserId(client));
 	}
-	if (gamemode != MVM_GAMEMODE)
+	if (!IsMvM())
 	{
 		PrintToServer("give to client %.0f startmoney",RealStartMoney);
 		//iCashtmp = GetEntProp(client, Prop_Send, "m_nCurrency", iCashtmp);
@@ -1692,7 +1692,6 @@ public CreateBuyNewWeaponMenu()
 public UberShopinitMenusHandlers()
 {
 	LoadTranslations("tf2items_uu.phrases.txt");
-	gamemode = -1;
 	BuyNWmenu_enabled = true;
 
 	cvar_uu_version = CreateConVar("uberupgrades_version", UU_VERSION, "The Plugin Version. Don't change.", FCVAR_NOTIFY);
