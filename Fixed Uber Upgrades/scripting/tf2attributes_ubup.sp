@@ -222,7 +222,7 @@ public UberShopDefineUpgradeTabs()
 	current_slot_name[3] = "Special Weapon";
 	current_slot_name[4] = "Body";
 	upgradesNames[0] = "";
-	CreateTimer(3.5, Timer_WaitForTF2II, _);
+	CreateTimer(0.2, Timer_WaitForTF2II, _);
 }
 
 public TF2_OnConditionAdded(client, TFCond:condition)
@@ -284,18 +284,6 @@ public TF2Items_OnGiveNamedItem_Post(client, String:classname[], itemDefinitionI
 				}
 			}
 			//PrintToChatAll("OGiveItem slot %d: [%s] #%d CAT[%d] qual%d", slot, classname, itemDefinitionIndex, currentitem_catidx[client][slot], itemLevel)
-			if (TF2_GetPlayerClass(client) == TFClass_Spy)
-			{
-				if (!strcmp(classname, "tf_weapon_pda_spy"))
-				{
-					currentitem_classname[client][0] = "tf_weapon_pda_spy";
-					currentitem_ent_idx[client][0] = 735;
-					current_class[client] = _:TF2_GetPlayerClass(client);
-					DefineAttributesTab(client, 735, 0);
-					currentitem_catidx[client][0] = GetUpgrade_CatList("l");
-					GiveNewUpgradedWeapon_(client, 0);
-				}
-			}
 			currentitem_catidx[client][4] = _:TF2_GetPlayerClass(client) - 1;
 			if (slot < 3)
 			{
@@ -409,6 +397,10 @@ public TF2Items_OnGiveNamedItem_Post(client, String:classname[], itemDefinitionI
 					{
 						currentitem_catidx[client][2] = GetUpgrade_CatList("tf_weapon_knife");
 					}
+					else if (!strcmp(classname, "tf_weapon_revolver"))
+					{
+						currentitem_catidx[client][slot] = GetUpgrade_CatList("tf_weapon_revolver")
+					}
 					else
 					{
 						currentitem_catidx[client][slot] = GetUpgrade_CatList(classname);
@@ -419,6 +411,18 @@ public TF2Items_OnGiveNamedItem_Post(client, String:classname[], itemDefinitionI
 					currentitem_catidx[client][slot] = GetUpgrade_CatList(classname);
 				}
 				GiveNewUpgradedWeapon_(client, slot);
+			}
+			if (current_class[client] == _:TFClass_Spy)
+			{
+				if (!strcmp(classname, "tf_weapon_pda_spy"))
+				{
+					currentitem_classname[client][1] = "tf_weapon_pda_spy"
+					currentitem_ent_idx[client][1] = GetPlayerWeaponSlot(client, 1);
+					current_class[client] = _:TF2_GetPlayerClass(client)
+					DefineAttributesTab(client, 735, 1)
+					currentitem_catidx[client][1] = GetUpgrade_CatList("tf_weapon_pda_spy")
+					GiveNewUpgradedWeapon_(client, 1)
+				}
 			}
 			//PrintToChatAll("OGiveItem slot %d: [%s] #%d CAT[%d] qual%d", slot, classname, itemDefinitionIndex, currentitem_catidx[client][slot], itemLevel)
 		}
@@ -1692,6 +1696,7 @@ public CreateBuyNewWeaponMenu()
 public UberShopinitMenusHandlers()
 {
 	LoadTranslations("tf2items_uu.phrases.txt");
+	LoadTranslations("common.phrases.txt");
 	BuyNWmenu_enabled = true;
 
 	cvar_uu_version = CreateConVar("uberupgrades_version", UU_VERSION, "The Plugin Version. Don't change.", FCVAR_NOTIFY);
@@ -1886,13 +1891,11 @@ public Action:Command_SetCash(client, args)
 }
 public Action:Command_AddCash(client, args)
 {
-	//PrintToChatAll("Step 1");
 	if(args != 2)
 	{
 		ReplyToCommand(client, "[SM] Usage: sm_addcash \"target\" \"amount\"");
 		return Plugin_Handled;
 	}
-	//PrintToChatAll("Step 2");
 	new String:strTarget[MAX_TARGET_LENGTH], String:strCash[128], Float:GivenCash, String:target_name[MAX_TARGET_LENGTH],target_list[MAXPLAYERS], target_count, bool:tn_is_ml;
 	GetCmdArg(1, strTarget, sizeof(strTarget));
 	if((target_count = ProcessTargetString(strTarget, client, target_list, MAXPLAYERS, COMMAND_FILTER_NO_BOTS, target_name, sizeof(target_name), tn_is_ml)) <= 0)
@@ -1900,12 +1903,10 @@ public Action:Command_AddCash(client, args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
-	//PrintToChatAll("Step 3");
 	GetCmdArg(2, strCash, sizeof(strCash));
 	GivenCash = StringToFloat(strCash);
 	for(new i = 0; i < target_count; i++)
 	{
-		//PrintToChatAll("Step 4");
 		CurrencyOwned[target_list[i]] += GivenCash;
 	}
 	return Plugin_Handled;
@@ -2370,13 +2371,12 @@ public	Menu_TweakUpgrades(mclient)
 	new Handle:menu = CreateMenu(MenuHandler_AttributesTweak);
 	new s;
 
-	SetMenuTitle(menu, "Display Upgrades/Remove downgrades");
+	SetMenuTitle(menu, "Remove downgrades or Display Upgrades");
 	for (s = 0; s < 5; s++)
 	{
-			decl String:fstr[100];
-
-			Format(fstr, sizeof(fstr), "%d$ of upgrades) Modify/Remove my %s attributes", client_spent_money[mclient][s], current_slot_name[s]);
-			AddMenuItem(menu, "tweak", fstr);
+		decl String:fstr[100];
+		Format(fstr, sizeof(fstr), "%d$ of upgrades | Modify or Remove my %s attributes", client_spent_money[mclient][s], current_slot_name[s]);
+		AddMenuItem(menu, "tweak", fstr);
 	}
 	if (IsValidClient(mclient) && IsPlayerAlive(mclient))
 	{
@@ -2814,28 +2814,24 @@ public Action:Menu_BuyUpgrade(client, args)
 	 {
 			new String:buffer[64];
 			menuBuy = CreateMenu(MenuHandler_BuyUpgrade);
-			SetMenuTitle(menuBuy, "****UberUpgrades");
-			Format(buffer, sizeof(buffer), "%T", "Body upgrade", client);
-			AddMenuItem(menuBuy, "upgrade_player", buffer);
+			SetMenuTitle(menuBuy, "Uber Upgrades - /buy or +reload & +showscores");
+			AddMenuItem(menuBuy, "upgrade_player", "Body upgrades");
 
-			Format(buffer, sizeof(buffer), "%T", "Upgrade my primary weapon", client);
-			AddMenuItem(menuBuy, "upgrade_primary", buffer);
+			AddMenuItem(menuBuy, "upgrade_primary", "Primary weapon upgrades");
 
-			Format(buffer, sizeof(buffer), "%T", "Upgrade my secondary weapon", client);
-			AddMenuItem(menuBuy, "upgrade_secondary", buffer);
+			AddMenuItem(menuBuy, "upgrade_secondary", "Secondary weapon upgrades");
 
-			Format(buffer, sizeof(buffer), "%T", "Upgrade my melee weapon", client);
-			AddMenuItem(menuBuy, "upgrade_melee", buffer);
+			AddMenuItem(menuBuy, "upgrade_melee", "Melee weapon upgrades");
 
 			//Format(buffer, sizeof(buffer), "%T", "Display Upgrades/Remove downgrades", client);
-			AddMenuItem(menuBuy, "upgrade_dispcurrups", "Display Upgrades/Remove downgrades");
+			AddMenuItem(menuBuy, "upgrade_dispcurrups", "Remove downgrades & Display Upgrades");
 			if (!BuyNWmenu_enabled)
 			{
-				Format(buffer, sizeof(buffer), "%T", "Buy a neeew weapon!!", client);
+				Format(buffer, sizeof(buffer), "%T", "Buy another weapon", client);
 				AddMenuItem(menuBuy, "upgrade_buyoneweap", buffer);
 				if (currentitem_level[client][3] == 242)
 				{
-					Format(buffer, sizeof(buffer), "%T", "Upgrade my neeew weapon!!", client);
+					Format(buffer, sizeof(buffer), "%T", "Upgrade bought weapon", client);
 					AddMenuItem(menuBuy, "upgrade_buyoneweap", buffer);
 				}
 			}
@@ -2910,17 +2906,17 @@ public MenuHandler_UpgradeChoice(Handle:menu, MenuAction:action, mclient, param2
 		decl String:fstr3[20];
 		if (slot != 4)
 		{
-			Format(fstr, sizeof(fstr), "%t", given_upgrd_classnames[w_id][cat_id],
-					mclient);
-			Format(fstr3, sizeof(fstr3), "%t", current_slot_name[slot], mclient);
+			Format(fstr, sizeof(fstr), "%t", given_upgrd_classnames[w_id][cat_id], 
+					mclient)
+			Format(fstr3, sizeof(fstr3), "%T", current_slot_name[slot], mclient)
 			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3,
 				fstr)
 		}
 		else
 		{
-			Format(fstr, sizeof(fstr), "%t", given_upgrd_classnames[current_class[mclient] - 1][cat_id],
-					mclient);
-			Format(fstr3, sizeof(fstr3), "%t", "Body upgrade", mclient);
+			Format(fstr, sizeof(fstr), "%t", given_upgrd_classnames[current_class[mclient] - 1][cat_id], 
+					mclient)
+			Format(fstr3, sizeof(fstr3), "%T", "Body upgrade", mclient)
 			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3,
 				fstr)
 		}
@@ -3036,30 +3032,35 @@ public MenuHandler_Choosecat(Handle:menu, MenuAction:action, mclient, param2)
 		decl String:fstr2[100];
 		decl String:fstr[40];
 		decl String:fstr3[20];
-		new slot = current_slot_used[mclient];
-		new cat_id = currentitem_catidx[mclient][slot];
-		if (slot == 4)
+		new slot = current_slot_used[mclient]
+		new cat_id = currentitem_catidx[mclient][slot]
+		if (slot != 4)
 		{
-			Format(fstr, sizeof(fstr), "%T", given_upgrd_classnames[current_class[mclient] - 1][param2],
-					mclient);
-			Format(fstr3, sizeof(fstr3), "%T", current_slot_name[slot], mclient);
-			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3,
-				fstr)
-			Menu_UpgradeChoice(mclient, param2, fstr2);
-		}
-		else
-		{
-			Format(fstr, sizeof(fstr), "%T", given_upgrd_classnames[cat_id][param2], mclient);
-			Format(fstr3, sizeof(fstr3), "%T", "Body upgrade", mclient);
-			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3, 
-					fstr)
+			Format(fstr, sizeof(fstr), "%T", given_upgrd_classnames[cat_id][param2], mclient)
+			Format(fstr3, sizeof(fstr3), "%T", current_slot_name[slot], mclient)
+			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient],fstr3,fstr)
+			Menu_UpgradeChoice(mclient, param2, fstr2)
 			if (param2 == given_upgrd_classnames_tweak_idx[cat_id])
 			{
-				Menu_SpecialUpgradeChoice(mclient, param2, fstr2,0);
+				Menu_SpecialUpgradeChoice(mclient, param2, fstr2,0)
 			}
 			else
 			{
-				Menu_UpgradeChoice(mclient, param2, fstr2);
+				Menu_UpgradeChoice(mclient, param2, fstr2)
+			}
+		}
+		else
+		{
+			Format(fstr, sizeof(fstr), "%T", given_upgrd_classnames[cat_id][param2], mclient)
+			Format(fstr3, sizeof(fstr3), "%T", "Body upgrade", mclient)
+			Format(fstr2, sizeof(fstr2), "%.0f$ [%s] - %s", CurrencyOwned[mclient], fstr3, fstr)
+			if (param2 == given_upgrd_classnames_tweak_idx[cat_id])
+			{
+				Menu_SpecialUpgradeChoice(mclient, param2, fstr2,0)
+			}
+			else
+			{
+				Menu_UpgradeChoice(mclient, param2, fstr2)
 			}
 		}
 	}
@@ -3138,7 +3139,7 @@ public Action:Timer_GiveHealth(Handle:timer)//give health every 0.333 seconds
 	{
 		if (IsValidClient(i))
 		{
-			new Address:RegenActive = TF2Attrib_GetByName(i, "health regen");
+			new Address:RegenActive = TF2Attrib_GetByName(i, "disguise on backstab");
 			if(RegenActive != Address_Null)
 			{
 				new Float:RegenPerSecond = TF2Attrib_GetValue(RegenActive);

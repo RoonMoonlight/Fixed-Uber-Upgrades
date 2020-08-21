@@ -1,5 +1,9 @@
 ﻿"Phrases"
 {	
+	"Gas passer damage multiplier"
+	{
+		"en"		"Gas passer damage multiplier"
+	}
 	"Add uber on hit(crossbow)"
 	{
 		"en"		"Add uber on hit"

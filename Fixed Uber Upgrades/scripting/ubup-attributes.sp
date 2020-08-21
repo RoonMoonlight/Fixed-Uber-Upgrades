@@ -6,6 +6,7 @@
 #include <tf2>
 #include <tf2_stocks>
 #include <tf2attributes>
+#include <dhooks>
 
 // Plugin Info
 public Plugin:myinfo =
@@ -18,7 +19,7 @@ public Plugin:myinfo =
 }
 //Variables
 new bool:b_Hooked[MAXPLAYERS+1];
-
+Handle g_DHookGrenadeGetDamageRadius;
 
 
 stock bool:IsValidClient( client, bool:replaycheck = true )
@@ -52,6 +53,12 @@ public OnPluginStart()
 			}
 		}
 	}
+	Handle hGameConf = LoadGameConfigFile("tf2.fixeduu");
+	if (!hGameConf) {
+		SetFailState("Failed to load gamedata for ubup-attributes.");
+	}
+	g_DHookGrenadeGetDamageRadius = DHookCreateFromConf(hGameConf,"CBaseGrenade::GetDamageRadius()");
+	delete hGameConf;
 }
 public OnPluginEnd()
 {
@@ -163,10 +170,8 @@ public OnGameFrame()
 		}
 	}
 }
-//		Expect this to be changed in the future.
-//
+//Expect this to be changed in the future.
 //public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon, int& subtype, int& cmdnum, int& tickcount, int& seed, int mouse[2])
-//
 //	if (IsValidClient(client))
 //	{
 //	}
@@ -179,7 +184,7 @@ public Action TraceAttack(int victim, int &attacker, int &inflictor, float &dama
 		if(IsValidEntity(CWeapon))
 		{
 			new Address:HeadshotsActive = TF2Attrib_GetByName(CWeapon, "charge time decreased");
-			if(HeadshotsActive != Address_Null && !TF2_IsPlayerInCondition(victim, TFCond_DefenseBuffNoCritBlock))// Batallions 
+			if(HeadshotsActive != Address_Null)
 			{
 				damagetype |= DMG_CRIT;
 				new Float:HeadshotDMG = TF2Attrib_GetValue(HeadshotsActive);
@@ -224,11 +229,99 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 				damage *= TF2Attrib_GetValue(bulletspershot);
 			}
 		}
+		//Detection for Gas Passer Explosion damage
+		if(damagetype & DMG_SLASH && damagecustom == 3 && weapon == GetPlayerWeaponSlot(attacker,1))
+		{
+			new Address:fireRes = TF2Attrib_GetByName(victim, "dmg taken from fire reduced");
+			new Address:rangedRes = TF2Attrib_GetByName(victim, "dmg from ranged reduced");
+			if(fireRes != Address_Null)
+				damage *= TF2Attrib_GetValue(fireRes);
+			if(rangedRes != Address_Null)
+				damage *= TF2Attrib_GetValue(rangedRes);
+
+			new Address:dmgMult = TF2Attrib_GetByName(weapon, "melee range multiplier");
+			if(dmgMult != Address_Null)
+				damage *= TF2Attrib_GetValue(dmgMult);
+		}
 	}
 	if(damage < 0.0)// Make sure you can't deal negative damage....
 	{
 		damage = 0.0;
 	}
+		/*//debug
+		PrintToChatAll("weapon %i", weapon);
+		PrintToChatAll("attacker %i", attacker);
+		PrintToChatAll("victim %i", victim);
+		PrintToChatAll("inflictor %i", inflictor);
+		PrintToChatAll("damagetype %i", damagetype);
+		PrintToChatAll("damagecustom %i", damagecustom);
+		PrintToChatAll(" ");
+		
+		if(damagetype & DMG_BULLET)
+		{
+			PrintToChatAll("Bullet");
+		}
+		if(damagetype & DMG_SLASH)
+		{
+			PrintToChatAll("Slash");
+		}
+		if(damagetype & DMG_BURN)
+		{
+			PrintToChatAll("Burn");
+		}
+		if(damagetype & DMG_VEHICLE)
+		{
+			PrintToChatAll("vehicle");
+		}
+		if(damagetype & DMG_FALL)
+		{
+			PrintToChatAll("fall");
+		}
+		if(damagetype & DMG_BLAST)
+		{
+			PrintToChatAll("blast");
+		}
+		if(damagetype & DMG_CLUB)
+		{
+			PrintToChatAll("club");
+		}
+		if(damagetype & DMG_SHOCK)
+		{
+			PrintToChatAll("shock");
+		}
+		if(damagetype & DMG_SONIC)
+		{
+			PrintToChatAll("sonic");
+		}
+		if(damagetype & DMG_PREVENT_PHYSICS_FORCE)
+		{
+			PrintToChatAll("no KB");
+		}
+		if(damagetype & DMG_ACID)
+		{
+			PrintToChatAll("crit");
+		}
+		if(damagetype & DMG_ENERGYBEAM)
+		{
+			PrintToChatAll("no falloff");
+		}
+		if(damagetype & DMG_POISON)
+		{
+			PrintToChatAll("no close falloff");
+		}
+		if(damagetype & DMG_RADIATION)
+		{
+			PrintToChatAll("half falloff");
+		}
+		if(damagetype & DMG_PLASMA)
+		{
+			PrintToChatAll("ignite victim");
+		}
+		if(damagetype & DMG_AIRBOAT)
+		{
+			PrintToChatAll("can headshot");
+		}
+		*/
 	return Plugin_Changed;
 }
 public Action:TF2_CalcIsAttackCritical(client, weapon, String:weaponname[], &bool:result)
@@ -343,31 +436,42 @@ public Action:TF2_CalcIsAttackCritical(client, weapon, String:weaponname[], &boo
 }
 public OnEntityCreated(entity, const char[] classname)
 {
-	if(StrEqual(classname, "tf_projectile_energy_ball"))
+	if(StrEqual(classname, "tf_projectile_energy_ball") || StrEqual(classname, "tf_projectile_mechanicalarmorb") || StrEqual(classname, "tf_projectile_energy_ring") ||
+	StrEqual(classname, "tf_projectile_arrow") || StrEqual(classname, "tf_projectile_healing_bolt"))
 	{
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
+		RequestFrame(delay, EntIndexToEntRef(entity)); //RequestFrame just does it better.
 	}
-	else if(StrEqual(classname, "tf_projectile_mechanicalarmorb"))
+	else if(StrEqual(classname, "tf_projectile_jar") || StrEqual(classname, "tf_projectile_jar_milk") || StrEqual(classname, "tf_projectile_jar_gas"))
 	{
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
-	}
-	else if(StrEqual(classname, "tf_projectile_energy_ring"))
-	{
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
-	}
-	else if(StrEqual(classname, "tf_projectile_arrow") || StrEqual(classname, "tf_projectile_healing_bolt"))
-    {
-		CreateTimer(0.0, delay, EntIndexToEntRef(entity));
+		DHookEntity(g_DHookGrenadeGetDamageRadius, true, entity,.callback = OnGetGrenadeDamageRadiusPost);
 	}
 }
-public Action:delay(Handle:timer, any:ref) 
+public MRESReturn OnGetGrenadeDamageRadiusPost(int grenade, Handle hReturn) {
+	float radius = DHookGetReturn(hReturn);
+	//copy and pasted from nosoops attribute support.
+	//https://github.com/nosoop/SM-TFAttributeSupport/blob/master/scripting/tf2attribute_support.sp
+	int weapon = GetEntPropEnt(grenade, Prop_Send, "m_hOriginalLauncher");
+	if (!IsValidEntity(weapon)) {
+		return MRES_Ignored;
+	}
+	if(IsValidEntity(weapon))
+	{
+		new Address:blastActive1 = TF2Attrib_GetByName(weapon, "Blast radius increased");
+		new Address:blastActive2 = TF2Attrib_GetByName(weapon, "Blast radius decreased");
+		if(blastActive1 != Address_Null)
+			radius *= TF2Attrib_GetValue(blastActive1);
+		if(blastActive2 != Address_Null)
+			radius *= TF2Attrib_GetValue(blastActive2);
+	}
+	DHookSetReturn(hReturn, radius);
+	return MRES_Supercede;
+}
+delay(ref) 
 { 
     new entity = EntRefToEntIndex(ref); 
-
     if(IsValidEdict(entity)) 
     { 
-		int client;
-		client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
+		new client = GetEntPropEnt(entity, Prop_Data, "m_hOwnerEntity");
 		if(IsValidClient(client))
 		{
 			new ClientWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
@@ -377,19 +481,18 @@ public Action:delay(Handle:timer, any:ref)
 				if(projspeed != Address_Null){
 					new Float:vAngles[3];
 					new Float:vPosition[3];
+					new Float:vel[3];
+					decl Float:vBuffer[3];
+					decl Float:vVelocity[3];
 					GetEntPropVector(entity, Prop_Data, "m_vecOrigin", vPosition);
 					GetEntPropVector(entity, Prop_Data, "m_angRotation", vAngles);
-					decl Float:vBuffer[3];
-					GetAngleVectors(vAngles, vBuffer, NULL_VECTOR, NULL_VECTOR);
-					decl Float:vVelocity[3];
-					new Float:projspd = TF2Attrib_GetValue(projspeed);
-					new Float:vel[3];
 					GetEntPropVector(entity, Prop_Data, "m_vecAbsVelocity", vel);
+					GetAngleVectors(vAngles, vBuffer, NULL_VECTOR, NULL_VECTOR);
+					new Float:projspd = TF2Attrib_GetValue(projspeed);
 					vVelocity[0] = vBuffer[0]*projspd*GetVectorLength(vel);
 					vVelocity[1] = vBuffer[1]*projspd*GetVectorLength(vel);
 					vVelocity[2] = vBuffer[2]*projspd*GetVectorLength(vel);
 					TeleportEntity(entity, NULL_VECTOR, NULL_VECTOR, vVelocity);
-					SetEntPropVector(entity, Prop_Send, "m_vInitialVelocity", vVelocity);
 				}
 			}
 		}
