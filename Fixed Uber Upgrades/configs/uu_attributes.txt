@@ -624,7 +624,7 @@
 			"ref"		"Add uber on hit"
 			"cost"		"800"
 			"increase_ratio" 	"0.4"
-			"value"		"0.010001"
+			"value"		"0.01"
 			"init"		"0.00"
 			"max"		"0.10"
 		}
@@ -634,7 +634,7 @@
 			"ref"		"Add uber on hit(crossbow)"
 			"cost"		"800"
 			"increase_ratio" 	"0.4"
-			"value"		"0.020001"
+			"value"		"0.02"
 			"init"		"0.00"
 			"max"		"0.34"
 		}
@@ -875,7 +875,7 @@
 		}
 		"44"
 		{
-			"name"		"health regen"
+			"name"		"disguise on backstab"
 			"ref"		"health regen"
 			"cost"		"500"
 			"increase_ratio" 	"0.075"
@@ -1110,7 +1110,7 @@
 			"name"		"maxammo metal increased"
 			"ref"		"maxammo metal increased"
 			"cost"		"400"
-			"value"		"0.401"
+			"value"		"0.4"
 			"increase_ratio"	"0.4"
 			"init"		"1.00"
 			"max"		"25.00"
@@ -1213,7 +1213,7 @@
 			"ref"		"Blast radius increased"
 			"cost"		"400"
 			"increase_ratio" "0.35"
-			"value"		"0.101"
+			"value"		"0.10"
 			"init"		"1.00"
 			"max"		"5.00"
 		}
@@ -1221,11 +1221,11 @@
 		{
 			"name"		"Blast radius increased"
 			"ref"		"Blast radius increased (J)"
-			"cost"		"300"
+			"cost"		"700"
 			"increase_ratio" "0.15"
-			"value"		"0.101"
+			"value"		"0.10"
 			"init"		"1.00"
-			"max"		"3.00"
+			"max"		"4.00"
 		}
 		"75"
 		{
@@ -2211,7 +2211,7 @@
 			"ref"		"engy sentry radius increased"
 			"cost"		"200"
 			"increase_ratio" 	"0.65"
-			"value"		"0.101"
+			"value"		"0.10"
 			"init"		"1.00"
 			"max"		"5.00"
 		}
@@ -2725,7 +2725,7 @@
 			"name"		"sapper damage leaches health"
 			"ref"		"sapper damage leaches health"
 			"increase_ratio" 	"0.1"
-			"cost"		"100"
+			"cost"		"500"
 			"value"		"5"
 			"init"		"1.00"
 			"max"		"6000.00"
@@ -3138,7 +3138,7 @@
 			"cost"		"1300"
 			"value"		"0.05"
 			"init"		"0.1"
-			"max"		"0.901"
+			"max"		"0.90"
 		}
 		"275"
 		{
@@ -3148,7 +3148,7 @@
 			"cost"		"1300"
 			"value"		"0.05"
 			"init"		"0.1"
-			"max"		"0.901"
+			"max"		"0.90"
 		}
 		"276"
 		{
@@ -3158,7 +3158,7 @@
 			"cost"		"1300"
 			"value"		"0.05"
 			"init"		"0.1"
-			"max"		"0.901"
+			"max"		"0.90"
 		}
 		"276"
 		{
@@ -3168,7 +3168,7 @@
 			"cost"		"1300"
 			"value"		"0.05"
 			"init"		"0.1"
-			"max"		"0.901"
+			"max"		"0.90"
 		}
 		"277"
 		{
@@ -3322,7 +3322,7 @@
 			"ref"		"all damage multiplier"
 			"cost"		"1200"
 			"increase_ratio"	".4"
-			"value"		"0.201"
+			"value"		"0.20"
 			"init"		"1.00"
 			"max"		"5.00"
 		}
@@ -3469,7 +3469,7 @@
 			"init"		"1"
 			"max"		".2"
 		}
-		"71"
+		"1525"
 		{
 			"name"		"Reload time increased"
 			"ref"		"Reload time increased(sniper)"
@@ -3478,7 +3478,7 @@
 			"init"		"1.00"
 			"max"		"5.00"
 		}
-		"71"
+		"1526"
 		{
 			"name"		"fire rate penalty"
 			"ref"		"fire rate penalty(sniper)"
@@ -3486,6 +3486,16 @@
 			"value"		"0.20"
 			"init"		"1.00"
 			"max"		"30.00"
+		}
+		"1527"
+		{
+			"name"		"melee range multiplier"
+			"ref"		"Gas passer damage multiplier"
+			"cost"		"1200"
+			"value"		"0.20"
+			"increase_ratio"	"0.25"
+			"init"		"1.00"
+			"max"		"60.00"
 		}
 	}
 }

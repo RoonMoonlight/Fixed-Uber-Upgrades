@@ -41,12 +41,6 @@
 			"Attr2"		"cloak rate"
 			"Attr4"		"decloak rate"
 		}
-		"Sapper upgrades"
-		{
-			"Attr2"		"sapper damage bonus"
-			"Attr3"		"sapper health bonus"
-			"Attr4"		"sapper health multiplier"
-		}
 	}
 	"body_scout"
 	{
@@ -932,7 +926,7 @@
 	}
 	"medig"
 	{
-		"special_tweaks_listid"		"2"
+		"special_tweaks_listid"		"1"
 		"Medigun Specific upgrades"
 		{
 			"Attr0"		"medigun charge is crit boost"
@@ -944,12 +938,12 @@
 			"Attr7"		"ubercharge rate bonus for healer"
 			"Attr8"		"uber duration bonus"
 		}
-		"Medic Shield Upgrades"
-		{
-			"Attr0"		"generate rage on heal"
-			"Attr1"		"increase buff duration(shield)"
-			"Attr2"		"Shield damage bonus"
-		}
+		//"Medic Shield Upgrades" //They're a bit too good.
+		//{
+		//	"Attr0"		"generate rage on heal"
+		//	"Attr1"		"increase buff duration(shield)"
+		//	"Attr2"		"Shield damage bonus"
+		//}
 		"Special Tweaks"
 		{
 			"Sp1" 	"Doooctoor!"
@@ -1635,7 +1629,9 @@
 		{
 			"Attr2"		"Gas explosion"
 			"Attr0"		"recharge rate(gas)"
+			"Attr5"		"Blast radius increased (J)"
 			"Attr1"		"Damage bonus vs player (C)"
+			"Attr6"		"Gas passer damage multiplier"
 			"Attr3"		"afterburn dmg increased"
 			"Attr4"		"afterburn time increased"
 		}
@@ -1768,7 +1764,7 @@
 	}
 	"vaccinator"
 	{
-		"special_tweaks_listid"		"3"
+		"special_tweaks_listid"		"2"
 		"Vaccinator Specific upgrades"
 		{
 			"Attr1"		"preserve ubercharge"
@@ -1788,16 +1784,15 @@
 			"Attr4"		"medigun blast resist deployed"
 			"Attr5"		"medigun bullet resist deployed"
 		}
-		"Medic Shield Upgrades"
-		{
-			"Attr0"		"generate rage on heal"
-			"Attr1"		"increase buff duration(shield)"
-			"Attr2"		"Shield damage bonus"
-		}
+		//"Medic Shield Upgrades"
+		//{
+		//	"Attr0"		"generate rage on heal"
+		//	"Attr1"		"increase buff duration(shield)"
+		//	"Attr2"		"Shield damage bonus"
+		//}
 		"Special Tweaks"
 		{
 			"Sp1" 	"Doooctoor!"
-
 		}
 	}
 }
